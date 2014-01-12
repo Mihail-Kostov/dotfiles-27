@@ -1,0 +1,27 @@
+{
+	"auto_complete_selector": "source, text",
+	"close_windows_when_empty": true,
+	"color_scheme": "Packages/Tomorrow Color Schemes/Tomorrow-Night-Eighties.tmTheme",
+	"create_window_at_startup": false,
+	"draw_white_space": "all",
+	"font_face": "Monaco",
+	"font_options":
+	[
+	],
+	"font_size": 12,
+	"highlight_modified_tabs": true,
+	"ignored_packages":
+	[
+		"Vintage"
+	],
+	"margin": 2,
+	"move_to_limit_on_up_down": false,
+	"open_files_in_new_window": false,
+	"save_on_focus_lost": true,
+	"scroll_past_end": true,
+	"soda_folder_icons": true,
+	"tab_size": 2,
+	"theme": "Soda Dark 3.sublime-theme",
+	"translate_tabs_to_spaces": true,
+	"trim_trailing_white_space_on_save": true
+}

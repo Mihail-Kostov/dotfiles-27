@@ -1,0 +1,25 @@
+{
+	"installed_packages":
+	[
+		"Alignment",
+		"Emmet",
+		"Git",
+		"GitGutter",
+		"HTML-CSS-JS Prettify",
+		"Jade",
+		"Jade Snippets",
+		"JavaScript & NodeJS Snippets",
+		"JavaScript Patterns",
+		"JavaScript Snippets",
+		"SideBarEnhancements",
+		"Stylus",
+		"Stylus-Snippets",
+		"SublimeWebColors",
+		"Theme - Soda",
+		"Tomorrow Color Schemes"
+	],
+	"repositories":
+	[
+		"https://github.com/billymoon/Stylus-Snippets.git"
+	]
+}

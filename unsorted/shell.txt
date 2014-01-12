@@ -1,0 +1,1227 @@
+#reading lines with for
+filename expansion is performed after command substitution
+  echo '*' > file;IFS=$'\n';for l in $(<file);do echo "$l";done # file
+  set -f;echo '*' > file;IFS=$'\n';for l in $(<file);do echo "$l";done # *
+characters in `IFS` are stripped and collapsed
+  $ printf %b '\n\na\n\nb\n\n' > file;IFS=$'\n';for l in $(<file);do printf "$l";done # ab
+`$(< file)` also reads the whole file to memory
+
+#reading lines with read
+without -r, \LF is replaced with LF, \\ is replaced with \, and other backslashes are removed
+characters in IFS are removed from the start and end of lines but not collapsed
+  echo ' 1  2 '|while read l;do echo "'$l'";done # '1  2'
+  echo ' 1  2 '|while IFS= read l;do echo "'$l'";done # ' 1  2 '
+if the last line doesn't end with a newline, read exits before the body of the loop
+  printf 'x\ny'|while read l;do printf $l;done # x
+  printf 'x\ny'|while read l||[[ $l ]];do printf $l;done # xy
+if a while loop is in a pipeline, it is also in a subshell, so variables are not visible outside it
+  x=0;seq 3|while read l;do let x+=l;done;echo $x # 0
+  x=0;while read l;do let x+=l;done< <(seq 3);echo $x # 6
+  x=1;x=2|x=3;echo $x # 1
+if a command inside the while loop reads from STDIN, you can add </dev/null after the command
+  some rsync and ffmpeg commands read from STDIN
+
+#quoting is not needed in bash
+inside [[, other than to disable pattern matching on the right side of pattern matching operators
+in assignments, including assignments for alias, declare / typeset, export, local, and readonly
+  bash 4.2 and earlier perform word splitting in x=$@ though
+in case expressions, other than to disable pattern matching
+for the word after case
+in the subscripts of associative arrays
+
+#quoting is needed in bash
+when expanding a parameter that contains a backslash inside some parameter expansions
+  a='1\2';b='\2';echo "${a%$b}" "${a%"$b"}" # 1\ 1
+  a=1\\3;b=\\;c=2;echo "${a//$b/$c}" "${a//"$b"/$c}" "${a//"$b"/"$c"}" # 1\3 123 1"2"3
+on the right side of redirections when POSIX mode is not enabled
+  POSIX mode disables word splitting and filename expansion on the right side of redirections
+
+#[[ and [ in bash
+word splitting and pathname expansion are performed inside [ but not inside [[
+  x='  ';[[ -s $x ]]
+  x='  ';[ -s $x ] # -bash: [: a: binary operator expected
+  [[ -f /privat* ]];echo $? # 1
+  [ -f /privat* ];echo $? # 0
+inside [[ the operands of arithmetic operators are arithmetic expressions
+  [[ 2+2 -eq 4 ]];echo $? # 0
+  [ 2+2 -eq 4 ];echo $? # -bash: [: 2+2: integer expression expected
+  [[ 010 -eq 8 ]];echo $? # 0
+  [ 010 -eq 8 ];echo $? # 1
+[[ doesn't support -a or -o and [ doesn't support && or ||
+[[ is a keyword and [ is a builtin in bash, and [[ can be slightly faster
+  type [[ # [[ is a shell keyword
+  type [ # [ is a shell builtin
+  time for i in {1..100000};do [[ 1 = 2 ]];done # 0.428
+  time for i in {1..100000};do [ 1 = 2 ];done # 0.852
+
+#concatenating audio files
+sox *.wav combined.wav
+  requires the files to have the same format and sample rate
+ffmpeg -i 1.wav -i 2.mp3 -i 3.m4a -filter_complex concat=n=3:v=0:a=1 combined.wav
+  n=3 is the number of files
+  sometimes parts of the start or end of files get cut off
+cat *.mp3 > combined.mp3;ffmpeg -i temp.mp3 -c copy output.mp3
+  lossless but keeps multiple copies of headers and metadata
+  ffmpeg -i temp.mp3 -c copy output.mp3 updates the XING headers for VBR mp3 files
+  if you don't update the XING headers, many applications think the combined file is as long as the first file
+
+#randomizing lines
+shuf
+  this is faster than sort -R or the other options
+LC_ALL=C gsort -R
+  -R is not defined by POSIX and not supported by OS X's sort
+  identical lines are sorted together
+awk 'BEGIN{srand()}{print rand(),$0}'|sort -n|cut -d' ' -f2-
+while IFS= read -r l;do echo "$RANDOM$RANDOM$RANDOM $l";done|sort|cut -d' ' -f2-
+  $RANDOM three times is about 45 bits of entropy
+  this is slower than the other options
+
+#caret notation
+\001 is ^A and \002 is ^B
+NUL is ^@ (@ is before A) and DEL is ^? (? is before @)
+LF is ^J and CR is ^M
+ESC is ^[
+
+#Readline Emacs mode keybindings
+\C-w (unix-word-rubout) deletes a word backward based on whitespace
+  M-<DEL> (backward-kill-word) uses different word boundaries
+\ey (yank-pop) rotates the kill ring and yanks the new top
+  it can only be used after \C-y or \ey
+\e\C-y (yank-nth-arg) inserts the nth argument
+  it inserts the first argument without a numeric argument
+  \e\C-y can't be repeated though so I have added `"\e,": "\e1\e."` to .inputrc
+\e0\e. inserts the zeroth argument
+\e-\e. inserts the second last argument
+\C-v\t inserts a tab
+\C-x\C-r (re-read-init-file) reloads .inputrc
+\e\C-e (shell-expand-line) performs shell expansions and alias and history expansion
+  it is useful for expanding command substitutions
+\C-x\C-v (display-shell-version) shows the shell name and version and platform
+\er (revert-line) undoes all changes
+\eg (glob-complete-word) completes globs
+  for example *finder\eg might insert com.apple.finder.plist
+\C-x* (glob-expand-word) expands globs
+  it is useful with commands like rm * or when you want to remove some of the completions
+\e* (insert-completions) inserts all completions
+  it is often like \C-x* but you don't have to add a wildcard to the end
+\e/ (complete-file) completes only filenames
+  it can be used to complete filenames instead of command names for the zeroth argument
+\e! (complete-command) completes command names
+\e$ (complete-variable) completes variable names
+  it can also be used to display the names of all variables
+\e{ (complete-into-braces) inserts completions as a list that can be expanded by brace expansion
+
+#lastpipe
+x=1;x=2|x=3;echo $x # 1
+(shopt -s lastpipe;set +m;x=1;x=2|x=3;echo $x) # 3
+the lastpipe option was added in bash 4.2
+lastpipe makes the shell run the last command of a pipeline in the parent shell instead of a subshell
+lastpipe does not have any effect if job control is enabled
+`set +m` (shopt -u monitor) disables job control
+zsh and ksh run the last command of a pipeline in the parent shell by default, even if job control is enabled
+
+#reading the lines of a file to an array
+IFS=$'\n' read -d '' -a a < file
+  removes empty lines
+  `-d ''` sets the delimiter to \0 instead of \n
+IFS=$'\n' a=($(<file))
+  removes empty lines
+  filename expansion is performed after parameter substitution, so use `set -f` if the file can contain lines like `*`
+mapfile -t a < file
+  doesn't remove empty lines
+  mapfile was added in bash 4.0
+  -t removes trailing linefeeds
+
+#not specified by POSIX
+arrays
+brace expansion
+process substitution
+${x:y}, ${x:y:z}, ${x[@], ${x[*]}, ${x/y/z}, ${!x}, ${!x*}
+  ${x%y}, ${x##y}, ${#x}, ${x:-y}, ${x=y}, and ${x?y} are defined
+any options for echo other than -n in XSI-conformant implementations
+  XSI-conformant implementations must also interpret escape sequences
+<<<, >&, &>, |&
+(()) and let
+  $(()) and expr are defined
+$''
+[[
+==, <, >, -nt, -ot, and -ef for test/[
+  =, -lt, and -gt are defined
+$RANDOM
+$PIPESTATUS
+local, select, shopt
+other options than -r for read
+find -print0 and xargs -0
+/dev/stdin, /dev/stdout, and /dev/stderr
+/dev/fd/
+sed -i
+printf %f
+\e for printf
+  you can use \x1b instead
+BSD-style options like aux for ps
+which
+seq
+readlink
+mktemp
+grep -h, -m, -o, -w, -z, -A, -B, -C, and -R
+egrep and fgrep
+  grep -E and grep -F are defined
+date +%s
+head -1
+  head -n1 is defined
+find -exec {}foo
+other keywords than init, clear, or reset for tput
+ARGIND, BINMODE, ERRNO, FIELDWIDTHS, FPAT, IGNORECASE, LINT, PROCINFO, RT, and TEXTDOMAIN in awk
+the BEGINFILE and ENDFILE keywords in awk
+systime() in awk
+hexadecimal and octal constants and \x in awk
+cp -a
+  -R and -p are defined
+paste -d ''
+  paste -d '\0' is defined
+
+#appending text to a file that does not necessarily end with a linefeed
+f=file;[[ -s $f && $(tail -c1 "$f") ]] && printf \\n >> "$f";echo aa >> "$f"
+  $(tail -c1) is empty only if the file ends with a linefeed or is empty
+  -s returns false if the file is empty
+sed -i '' -n p file;echo aa > file
+  -n p = no printing by default, print
+
+#gnuplot
+set term png
+set term # list terminal types
+set output '/tmp/plot.png'
+plot '1.txt' with lines
+plot '1.txt' u 1 with lines, '2.txt' u 2 with dots
+e # end inline input
+set logscale xy
+
+#conversion characters in OS X's seq
+OS X's seq only supports the %f, %e, %g, %E, and %G conversion characters
+%g is the shorter one of %f or %e with enough decimal points for full precision
+%e is scientific notation, %E is %e with a capital E, and %G is %g with a capital E
+the default format is %g
+`seq 999999 1000000` prints 999999 and 1e+06
+%.0f can be used as a subsititute for %d
+`seq -f %.0f 999999 1000000` prints 999999 and 1000000
+seq is not defined by POSIX and GNU seq has a different default format
+
+#differences between GNU and OS X
+sed -r
+  sed -E
+sed -i
+  sed -i ''
+sed 's/aa/\n/'
+  sed $'s/aa/\\\n/'
+sed 2itext
+  sed $'2i\\\ntext\n'
+stat -c # or --printf
+  stat -f
+ls --color-auto
+  ls -G # or CLICOLOR= ls
+date -d @1364497846 +%FT%TZ # there is no -r option, @ is needed for absolute times
+  date -r 1364497846 +%FT%TZ # -d sets kernel's value of DST
+date +%s%N # %N is nanoseconds
+  brew install daemontools;echo|tai64n|tai64nlocal
+find -executable
+  find . -type f -perm +111
+md5sum
+  md5
+find -xdev
+  find -x
+
+#things that don't work in OS X
+find -printf
+find -regex
+find -quit # quit after the first match
+readlink -f # print absolute paths
+xargs -d # delimiter
+ls --ignore
+shuf # randomize lines
+sort -R # randomize lines (identical lines are sorted together)
+du -h|sort -h
+head -n-3 # remove last 3 lines
+uniq -w 5 # uniq by first 5 characters (there is only uniq -s 5, which ignores the first 5 characters)
+grep -P # PCRE (removed in 10.8)
+grep -z # null-terminated
+free # for example free -m shows free memory
+getent # for example `getent passwd 501` prints an entry in /etc/password
+cp -t # target directory
+ps -C # match command names (-C changes the way CPU use is calculated on OS X)
+sleep 1m # 1 minute
+csplit file.txt '/pattern/' {*} # the repetition counter can only be an integer and not {*}
+ls -l --time-style=iso
+mv -T dir1 dir2 # replace dir2 with dir1 instead of moving dir1 inside dir2
+killall -r # regex
+
+#things that don't work in GNU/Linux
+tail -r # reverse lines
+jot # print sequences of numbers or characters
+mkfile # for example `mkfile 10k new.txt` creates a 10 KiB file
+grep -A -1 # print all lines after the match
+find -depth 2 # GNU (but not POSIX) supports `-mandepth 2 -mindepth 2`
+
+#function syntax
+`name ()`, `function name`, and `function name ()` are identical in bash and zsh
+POSIX defines `name ()` but not `function name` or `function name ()`
+  function is a reserved keyword though
+the function keyword was introduced in ksh
+including both function and () is redundant in most or all shells
+  it results in an error in some versions of ksh
+in ATT ksh functions defined with the function keyword have different behavior
+  they have their own trap context
+  `typeset` makes variables local inside them
+
+#less keybindings
+b scrolls a window backward, f scrolls a window forward
+u scrolls a half window up, d scrolls a half window down
+g goes to start, G goes to end
+p50 goes to the middle of the file
+pressing m and some lowercase letter marks a position, and pressing ' and the same letter returns to the position
+
+#less options
+-j .5 changes the jump target to the middle of the screen instead of the first line
+  the jump target is used when searching and when selecting other matches with p or n
+-c makes the screen get cleared instead of scrolled line by line when scrolling
+-~ displays empty space above and below a file as blank lines instead of tildes
+if -c has been enabled, -+c resets -c to the default value
+-v opens files in VISUAL or EDITOR
+
+#POSIX ps
+according to POSIX, `ps -aux` should print processes owned by a user named `x`
+  `ps -aux` acts that way in OS X
+  in Ubuntu `ps -aux` acts like `ps aux` but it prints a warning at the start
+the BSD-style options like `aux` are not defined by POSIX
+POSIX defines -e and -A to be equivalent
+  -e and -A include processes without a controlling terminal
+  -a does not include processes without a controlling terminal
+  -x is not defined
+
+#matching processes by name
+ps -C processname -o comm=
+  `ps -C` is not defined by POSIX
+  in GNU `ps -C` matches command names but in OS X it changes the way CPU use is calculated
+pgrep -x processname
+  pgrep is not defined by POSIX
+  pgrep only matches the first 15 characters of process names in GNU/Linux
+  OS X's pgrep doesn't include ancestor processes without -a
+  GNU pgrep includes ancestor processes by default and has no -a option
+ps -eo comm=|sed 's|.*/||'|grep -x processname
+  process names are truncated to 15 characters in GNU/Linux
+  sed 's|.*/||' removes the dirname parts of paths in OS X
+  OS X's ps prints the absolute paths of commands without -c
+  GNU ps does not print absolute paths by default, and -c has a different meaning
+
+#ISO 8601
+gdate -I # date +%F
+gdate -Iminutes # date +%FT%H:%M%z
+gdate -Iseconds # date +%FT%T%z
+date -u +%FT%TZ # TZ=UTC date +%FT%TZ
+these are also valid ISO 8601 date or time formats
+  20130503T15 (%Y%m%dT%M)
+  2013-05 (%Y-%m)
+  2013W18 (%YW%V)
+  2013-W18-5 (%Y-W%V-%u)
+  2013W185 (%YW%V)
+  2013-123 (%Y-%j, ordinal date, extended)
+  2013123 (%Y%j, ordinal date, basic)
+  2013 (%Y)
+  20 (%C)
+  1559 (%H%M)
+  15 (%H)
+  15:59:24+03 (the UTC offset doesn't have to include minutes)
+these are not
+  2013-05-03 15:59 (the date and time parts have to be separated by T in the extended format)
+  20130503T15:59 (the basic and extended formats can't be mixed)
+
+#deleting duplicate files
+fdupes -rn .
+  -r is recursive
+  -n ignores empty files
+  add -dN to delete all except the first file
+find . -type f ! -empty -exec md5 -r {} +|awk '++a[$1]!=1'|cut -d' ' -f2-|tr '\n' '\0'|xargs -0 rm
+  md5 -r (reverse) prints the checksum, a space, and the filename
+  awk '++a[$1]!=1' prints lines where the first column has been seen before
+  tr '\n' '\0'|xargs -0 can be replaced with xargs -d '\n' with GNU xargs
+
+#making screencap images
+ffmpeg -i input.mkv -r 0.05 %06d.png
+  -r 0.05 saves a frame every 20 seconds
+  sometimes includes a few extra frames from the start
+montage *.png -tile 3x3 -geometry 300x+0+0 screencaps.png
+  300x sets the maximum width to 300 pixels
+  +0+0 removes the default padding
+
+#converting between line ending formats
+CRLF to LF
+  dos2unix *.txt
+  sed -i '' 's/\r//' *.txt
+  tr -d \\r
+LF to CRLF
+  unix2dos *.txt
+  recode ../crlf *.txt
+LF to CR
+  tr \\n \\r
+  awk -v ORS=\\r 1
+CR to LF
+  tr \\r \\n
+  mac2unix *.txt
+  awk -v RS=\\r 1
+CRLF or CR to LF
+  ruby -e 'print gets(nil).gsub /\r\n?/,"\n"'
+  ruby -i -pe 'BEGIN{$/="\r"};$_=$_.sub("\n","").sub("\r","\n")' *.txt
+
+#reading TSV columns
+read -a collapses and strips characters in IFS
+   while IFS=$'\t' read -a l;do echo ${l[0]} ${l[1]};done <<< $'\t1\t\t2' # 1 2
+($var) collapses and strips tabs, spaces, and linefeeds if they are in IFS, but not other characters
+  line=$'\t1\t\t2';IFS=$'\t' l=($line);echo ${#l[@]} # 2
+  line=x1xx2;IFS=x l=($line);echo ${#l[@]} # 4
+cut doesn't collapse or strip delimiter characters
+  cut -f4 <<< $'\t1\t\t2' # 2
+
+#listing only files that start with a period
+shopt -s nullglob;printf %s\\n .[^.]* ..?*
+shopt -s dotglob nullglob;GLOBIGNORE='. ..';printf %s\\n *
+ls -a|grep -E '^(\.[^.]|\.\.[^$])'
+
+#reversing lines
+tac
+  GNU but not BSD
+tail -r
+  BSD but not GNU
+sed '1!G;h;$!d'
+awk '{a[NR]=$0}END{while(NR>0)print a[NR--]}'
+awk '{a[i++]=$0}END{for(j=i-1;j>=0)print a[j--]}'
+
+#POSIX echo
+POSIX requires echo to not support any options
+XSI-conformant systems are required to treat -n as a string argument
+  non-XSI-conformant systems are allowed to either treat -n as a string argument or to ignore -n
+XSI-conformant systems are required to interpret escape sequences
+  non-XSI-conformant systems are allowed to either interpret or not interpret escape sequences
+
+#bash --posix
+`bash --posix` does not make bash fully POSIX-conformant
+  xpg_echo is not enabled if bash has not been configured with --enable-xpg-echo-default
+  FCEDIT defaults to EDITOR or ed instead of ed
+the different default value for FCEDIT is shown when diffing `strings /bin/bash` and `strings /bin/sh` in OS X
+
+#deleting characters from the start of a file
+sed '1s/^.{3}//'
+dd bs=3 skip=1
+  block size 3 instead of 512, skip 1 block
+x=$(<input.txt);echo "${x:3}"
+awk 'NR==1{sub(/^.../,"")}1'
+
+#strftime
+%a is abbreviated weekday name and %A is unabbreviated weekday name
+%b is abbreviated month name and %B is unabbreviated month name
+%u is weekday as 1-7 and %w is weekday as 0-6
+%e is day of month padded with a space
+%k is hour padded with a space and %l is minutes padded with a space
+%T is %H:%M:%S, %r is %I:%M:%S %p, and %R is %H:%M
+%F is %Y-%m-%d
+%V is ISO week number
+%z is time zone offset and %Z is time zone name
+%y is the year without a century
+
+#printing one character per line
+fold -w1
+  does not work with multibyte characters in coreutils fold
+grep -o .
+  -o is not defined by POSIX
+sed $'s/./&\\\n/g'
+gsed 's/./&\n/g'
+while IFS= read -r -n1 c;do printf %s\\n "$c";done
+  add `-d ''` to also include empty lines for linefeeds
+gawk -F '' 'OFS="\n"{$1=$1}1'
+awk 'BEGIN{FS="";OFS="\n"}{$1=$1}1'
+
+#printing the code points of characters
+printf %x\\n \'a # 61
+printf %x\\n \'$'\u7fc2' # 7fc2
+LC_CTYPE=C printf %x\\n \'$'\u7fc2' # e3
+this is defined by POSIX and works with the builtin printf in new versions of bash and zsh
+this does not work with the builtin printf in bash 3.2 or with OS X's /usr/bin/printf
+
+#printing the last entry in the history list
+history -p '!!'
+  -p prints the arguments after performing history expansion
+echo "!!"
+fc -l -1|cut -d' ' -f2-
+  -l -1 is the last line
+  fc -n would also omit line numbers, but it prints a space at the start of each line
+
+#escaping XML
+sed 's/&/\&amp;/g;s/</\&lt;/g;s/>/\&gt;/g;s/"/\&quot/g'
+  an unescaped & is replaced with the matched text
+amp() { local x=${1//&/&amp;};x=${x//</&lt;};x=${x//>/&gt;};printf %s "${x//\"/&quot;}";}
+  this was about 100 times faster than the sed command
+double quotes only have to be escaped inside strings
+
+#cp -r and cp -R
+-r and -R are identical in GNU cp
+In OS X, `cp -r` does not copy symlinks, special files, or named pipes correctly according to the man page
+POSIX says that the treatment of special files is implementation-defined for -r
+
+#finding files sorted by modification date
+find . -type f -exec stat -f'%m %N' {} +|sort -rn|cut -d' ' -f2-
+  use `stat -c'%Y %n'` with GNU stat
+gfind -type f -printf '%T@ %p\n'|sort -rn|cut -d' ' -f2-
+  %T@ is absolute modification time, %p is pathname
+zsh -o dotglob -c 'printf %s\\n **/*(.om)'
+  . is a qualifier for regular files
+  om orders files by modification time
+
+#removing BOMs or converting files to UTF-8 with dos2unix
+dos2unix also removes BOMs and converts UTF-16 files with a BOM (but not UTF-16 files without a BOM) to UTF-8
+printf '\ufeff\u1234' > a;dos2unix a;xxd -p a # e188b4
+printf '\ufeff\u1234'|iconv -f utf-8 -t utf-16be > a;dos2unix a;xxd -p a # e188b4
+printf '\u1234'|iconv -f utf-8 -t utf-16be > a;dos2unix a;xxd -p a # 1234
+`iconv -t utf-16` adds a BOM but `iconv -t utf-16be` doesn't
+
+#replacing a line with a specific line number
+sed '5s/.*/new/'
+gsed '5cnew'
+sed $'5c\\\nnew\n'
+  POSIX and OS X's sed require c to be followed by a backslash and a newline
+awk '{print NR==5?"new":$0}'
+v=new awk '{print NR==5?ENVIRON["v"]:$0}'
+
+#encoding AAC with ffmpeg
+libfdk_aac is higher quality than libfaac and libfaac is higher quality than aac
+`--enable-nonfree --enable-libfdk_aac` enables support for fdk_aac
+  use `brew install ffmpeg --with-fdk-aac` with Homebrew
+ffmpeg -i input.flac -c libfdk_aac -vbr 4 output.m4a
+  -vbr 1, 2, 3, 4, and 5 are about 90, 100, 110, 130, and 220 kb/s for stereo music
+  the value for -vbr can't be fractional, so for example `-vbr 4.6` is rounded up to 5
+  use `-b:a 140k` for 140 kb/s CBR
+ffmpeg -i input.flac -c libfaac -q 150 output.m4a
+  `-q 10` is lowest quality and `-q 500` is highest quality
+
+#terms used in bash's documentation
+control operator # newline, ||, &&, &, ;, ;;, |, |&, (, or )
+metacharacter # a character that separates words when it is unquoted
+special builtin # a builtin that has been classified as special by POSIX
+job specification # %1234, %%, ,%-, %?ce
+operator # a control operator or a redirection operator
+list # a sequence of one or more pipelines separated by ;, a newline, &, &&, or ||
+conditional expression # an expression used with [[ or test/[
+substring expansion # ${PARAMETER:OFFSET:LENGTH}, ${PARAMETER:OFFSET}
+indirect expansion # ${!PREFIX*}, ${!NAME[@])
+process substitution # <(LIST), >(LIST)
+range expression # [a-z]
+indexed array # a non-associative array
+arithmetic for command # for (i=1;i<=10;i++)
+compound assignment # x=1 y=2
+special parameter # $*, $@, $#, $?, $-, $$, $!, $0, $_
+
+#format specifiers for OS X's stat
+%N # filename
+%z # size in bytes
+%a # access time
+%m # modification time
+%B # birth (creation) time
+%Y # target of a symlink
+%u # user
+%g # group
+%i # inode number
+%f # file flags
+%l # number of hard links
+
+#character classes in the POSIX locale
+[[:graph:]] # [!-~]
+[[:print:]] # [ -~]
+[[:space:]] # [ \f\n\r\t\v]
+[[:blank:]] # [ \t]
+
+#locale variables
+LANG is used as the default value for all unset LC_ variables except LC_ALL
+LANG is not used as the default value for LC_ variables that
+LC_ALL overrides all other LC_ variables, and if LC_ALL is set, other LC_ variables can't be changed
+for example LC_CTYPE can be set to just UTF-8, but LANG and LC_ALL have to be set to something like en_US.UTF-8
+collation orders are different on different platforms
+  `LC_COLLATE=en_US.UTF-8 sort <<< $'a\nb\nA\nB'|tr -d \\n` prints ABab in OS X and aAbB in Ubuntu
+
+#sort -k
+sort -k2 <<< 'a b c' # the key is ` b c`
+sort -k2,2 <<< 'a b c' # the key is ` b`
+sort -bk2,2 <<< 'a b c' # the key is `b`
+sort -t$'\t' -k4,4 <<< $'\ta\t\tb' # the key is `b`
+sort -k2,2 <<< ' a  b' # the key is `  b`
+
+#-n and -g in GNU sort
+-n (--numeric-sort)
+  recognizes 01, -0.5, .5, and 1,000, but not 1.2E3 or +1
+-g (--general-numeric-sort)
+  also recognizes 1.2E3 and +1
+  slower
+  compares numbers as floating point
+both only consider keys that start with zero or more blanks followed by a value interpreted as numeric
+the recognized decimal separators and thousands separators depend on LC_NUMERIC
+
+#deleting files with a specific size
+find . -size 12345c -delete
+  c is characters (bytes)
+for f in *;do [[ $(stat -f%z "$f") = 12345 ]] && rm "$f";done
+  for BSD stat, use `stat -c%s` with GNU stat
+
+#bash 4.3
+curl http://git.savannah.gnu.org/cgit/bash.git/plain/CHANGES?id=bash-4.3-beta2
+wget http://git.savannah.gnu.org/cgit/bash.git/snapshot/bash-4.3-beta2.tar.gz;cd bash-bash-4.3-beta2;./configure;make
+array subscripts can be negative in assignments, so for example a[-1]=x works
+  support for ${a[-1]} was added in 4.2
+help does not include prefix matches if there is an exact match, so for example `help read` does not match readonly
+  if there are no exact matches, help attempts matching substrings
+`shopt -s globasciiranges` makes character ranges like [a-z] always act like in the C locale
+`wait -n` waits for the next child process to complete
+checkwinsize also applies to non-interactive shells
+read skips NUL bytes in the input
+shells started to run process substitutions run traps set on EXIT
+!" is not expanded in "a!"
+word splitting is not performed for x=$@
+  `set 'a  b';x=$@;echo "$x"` prints `a  b` instead of `a b`
+for example *(.*) matches files that start with . even if dotglob is not enabled
+quote removal is performed for c in ${a/b/c}
+  `a=1;echo ${a/1/'2'}`` prints 2 instead of '2'
+  `a=1 b=2;echo "${a//1/"$b"}"` prints 2 instead of "2"
+`printf %q '~/'` prints \~/ instead of ~/
+`printf '%()T'` prints the current time
+  in bash 4.2 `printf '%()T' -1` prints the current time
+`declare -n` makes a parameter a nameref and `test -R` tests if a parameter is a nameref
+exit and return accept negative arguments, so for example `exit -1` is equivalent to `exit 255`
+`complete -o noquote` removes quotes and escape sequences before inserting completions
+HISTSIZE and HISTFILESIZE can be set to -1 for unlimited length
+  in previous versions you can use `HISTSIZE= HISTFILESIZE=`
+CHILD_MAX=3 tells bash to remember the exit status of at most 3 child processes
+BASH_COMPAT can be used to set shell compatibility levels
+`shopt -s direxpand` makes filename completion expand variables in directory names like in bash 4.1
+attempting to define a function with the same name as a POSIX special builtin results in an error in POSIX mode
+history expansion is disabled by default when bash is compiled with --enable-strict-posix-default
+`bind -X` prints all key sequences bound to shell commands
+completion for command names works even if there is an assignment statement preceding the command name
+history is also saved for non-interactive shells if history is enabled and HISTFILE is set
+`fc -0` is the current command line
+`bind 'set colored-stats on'` enables using colors for possible completions
+`bind 'set keyseq-timeout 2'` enables using a 2 second inter-character timeout when reading input
+history-substring-search-backward is like history-search-backward but it matches substrings instead of prefixes
+print-last-kbd-macro prints the definition of the most recently defined macro in a reusable format
+
+#bash 4.2
+$'', printf, and echo interpret \u1234 and \U12345678 escape sequences
+`declare -g` make a variable global inside a function
+`printf '%(%Y-%m-%d)T\n' -1` is an alternative to `date +%Y-%m-%d`
+[[ and test/[ have a -v operator for testing if a variable has been set
+FUNCNEST can be used to limit the function nesting level after
+`exec -a foo` sets $0 to foo in an executable script without a #! line
+cd -e # cd -Pe exists with an error if the current working directory can not be determined succesfully
+`trap -p` shows signals ignored at shell startup (SIGTSTP, SIGTTIN, and SIGTTOU)
+the callback for mapfile receives the current line as a third argument
+the maximum number of columns for displaying completions can be limited by setting completion-display-width
+completion-case-map makes case-insensitive completion treat - and _ as identical
+
+#bash 4.1
+the < and > operators for [[ use the current locale
+commands invoked as callbacks by mapfile are no longer stored in the history list
+`echo ${@:0:2}` prints $0 and $1 instead of $1
+precomposed and decomposed forms of characters are treated as equivalent in OS X
+  it affects filename completion, globbing, and readline redisplay
+  HFS+ stores many characters in decomposed form
+`printf -v 'a[2]' xx` sets ${a[2]} to xx
+`complete -E` applies to completions attempted on an empty line
+`complete -D` applies as the default for completion for commands without any specific completions
+dabbrev-expand sorts completions by recency instead of alphabetically
+$BASHOPTS is like like $SHELLOPTS but for options settable with shopt instead of `set -o`
+$BASH_XTRACEFD can be used to set the file descriptor for xtrace output
+{var} specifies a variable on the left side of redirection operators
+extended globbing is enabled on the right side of == and != inside [[ even if extglob is unset
+  shopt -u extglob;[[ a = @(a|b) ]];echo $? # 0
+menu-complete-backward # cycle through completions backwards
+C-n is bound to menu-complete and C-p is bound to menu-complete-backward in the vi insertion keymap
+bind 'set skip-completed-text on' # complete fi|l to file.txt instead of file.txtl
+there can be only one active coprocess at a time
+
+#bash 4.0
+support for associative arrays and coprocs was added
+`echo {001..4}` prints `001 002 003 004`
+`x=abcdef;echo ${x:0:-2}` prints `abcd`
+`x=aa y=AA;echo ${x^^} ${x^} ${y,,} ${y,}` prints `AA Aa aa aA`
+declare  has -l, -u, and -c options
+`shopt -s globstar` makes ** match multiple levels of directories
+`mapfile arr < file` reads the lines of file to arr
+|& is a synonym for 2>&1|
+&>> appends stdout and stderr
+;& goes to the next action in case statements
+;&& goes to the next pattern after completing the current action in case statements
+help messages have a table for options instead of describing options using full sentences
+`help -d` prints a short description and `help -m` uses a man page-like format
+`shopt -s autocd` enables changing directories by typing directory names without cd
+`shopt -s checkjobs` makes trying to exit when there are running or stopped jobs require confirmation
+support for compatibility levels was added
+when read times out, it assigns the input to the specified variables instead of discarding the input
+PROMPT_DIRTRIM can be used to limit the maximum length of \w and \W in prompts
+the parsing of metacharacters and whitespace on the right side of =~ was changed
+`read -n` counts characters instead of bytes
+`read -i` inserts the argument to the reply buffer when using readline with -e
+`read -t` supports fractional values
+`read -t0` returns success if there is input available from the specified file descriptor
+$() command substitutions are parsed using POSIX rules
+ulimit uses a block size of 512 for -c and -f in POSIX mode
+`ulimit -b` changes the socket buffer size and `ulimit -T` changes the number of threads
+`declare -p` without arguments uses a different format and does not include functions
+  variables are printed like `declare -ir UID="501"` instead of `UID=501`
+  `declare -pf` prints only functions and also includes declare commands for the attributes of functions
+command_not_found_handle
+`set -e` causes the shell to exit if a pipeline fails
+bash retries attempting to create a child process if creating a child process fails due to insufficient resources
+if var is not set, `declare var` does nothing instead of assigning var to the empty string
+compopt modifies or display completion options
+COMP_TYPE and COMP_KEY
+commands assigned with `bind -x` set READLINE_LINE_BUFFER and READLINE_POINT
+`shopt -s dirspell` performs spelling correction when completing directory names
+programmable completion uses the same word break characters as readline
+shell-{back,for}ward-{kill-,}word delimit words by non-quoted metacharacters instead of non-alphanumeric characters
+dabbrev-expand completes words from the history list
+
+#differences between LSB and POSIX
+LSB does not require a full implementation of the User Portability Utilities option
+range expressions like [a-z] are allowed to be based on code point order instead of collating element order
+handling of multi-character collating elements is optional
+equivalence class expressions (like [=a=]) and multi-character collation element expressions (like [.ch.]) are optional
+the default block sizes for du and df are not specified by LSB
+  Linux implementations of du and df often default to 1024-byte blocks
+  POSIX requires du and df to default to 512-byte blocks
+kill does not send the signal to the calling process when the PID is -1
+ar is deprecated in LSB
+LSB `at -r` is functionally equivalent to POSIX `at -d`
+  LSB defines -r but not -d and POSIX defines -d but not -r
+LSB requires od to support -w for the number of bytes to output per line
+  OS X's od does not have a -w option
+LSB does not specify the -I, -E, or -L options for xargs
+
+#preserving attributes with rsync
+-t # --times
+-o # --owner
+-g # --group
+-p # --perms
+-H # --hard-links
+--devices
+--specials
+--executability # -E in GNU
+-E # extended attributes and ACLs in OS X, executability in GNU
+-XA # extended attributes and ACLs in GNU
+
+#wget
+without --ftp-password, the password defaults to -wget@
+passive FTP has a better chance of working behind some firewall and NAT configurations
+EGD = entropy gathering daemon
+<!--1--2--> is not considered to be a valid comment with --strict-parsing
+--retr-symlinks retrieves the targets of symlinks to files but not symlinks to directories
+symlinks of files specified as arguments are traversed by default
+--no-remove-listing disables removing .listing files generated by FTP retrievals
+wget only supports application/x-www-from-urlencoded and not multipart/form-data
+--certificate-type and --private-key-type are PEM by default
+--content-disposition can result in extra round trips
+Content-Disposition headers are used by CGI programs to describe the names of files
+--trust-server-names uses the names files redirected to
+if /dev/random is not available, wget uses --egd-file, RANDFILE, or ~/.rnd
+-KN adds .orig to the original files
+-A and -R don't affect the downloading of HTML files
+-A and -R don't consider parts of URLs after ?
+`-E -A.php` saves index.php as index.php.html, which will be deleted
+--follow-ftp also enables following FTP links on different hosts
+links followed to FTP directories with --follow-ftp are not retrieved recursively
+wget checks the Last-Modified headers instead of using If-Modified-Since requests
+wget only supports the basic authentication scheme for proxy authentication
+`killall -hup wget` makes wget redirect output to wget-log
+RES = Robots Exclusion Standard
+wget also honors `<meta name="robots" content="nofollow">`
+passwords are transmitted unencrypted when using the basic authentication scheme
+
+#bash set
+-B/braceexpand can be used to disable brace expansion with +B
+-C/noclobber prevents overwriting regular files with >
+-E/errtrace makes traps on ERR be inherited
+-H/histexpand disables history expansion
+-P/physical doesn't allow cd, pushd, or popd to follow symlinks
+-T/functrace makes traps on DEBUG and RETURN be inherited
+-a/allexport makes all new variables and functions be exported
+-b/notify makes notifications about terminated background jobs be sent immediately instead of before displaying PS1
+-e/errexit makes the shell exit if a command exits with a non-zero status
+-f/noglob disables filename expansion
+-h/hashall can be used to disable remembering the locations of commands with +h
+-k/keyword allows placing assignment statements for passing environment variables within or after the command
+-m/monitor enables job control
+-n/noexec makes the shell read commands but do not execute them
+-p/privileged turns on privileged mode
+-t/onecmd makes the shell exit after reading and executing one command
+-u/nounset makes the shell treat expanding an unset parameter as an error and exit if the shell is not interactive
+-v/verbose prints input lines as they are read
+-x/xtrace prints the expanded value of PS4 before commands
+
+#SGR parameters
+1 is bold, 4 is underline, 5 is blink, 7 is inverse text
+30 to 37 are foreground colors and 40 to 47 are background colors
+39 is the default foreground color and 49 is the default background color
+90 to 97 are foreground colors for 16-color mode
+100 to 107 are background colors for 16-color mode
+38;5;0 to 38;5;255 are background colors for 256-color mode
+48;5;0 to 48;5;255 are foreground colors for 256-color mode
+
+#GNU grep
+GREP_COLORS defaults to ms=01;31:mc=01;31:sl=:cx=:fn=35:ln=32:bn=32:se=36
+GREP_COLOR is deprecated
+--color can be set to never, always, or auto
+the V7 grep had no -q option and -s acted like -q
+-H (--with-filename) is the default when searching in more than one file
+-b (--byte-offset) is zero-based
+-T (--initial-tab) changes the formats used by -H, -n, and -b
+--no-group-separator removes the separator for -A, -B, and -C
+--group-separator is -- by default
+--binary-files=binary is the default
+-a is equivalent to --binary-files=text
+-I is equivalent to --binary-files=without-match
+-D (--devices) applies to devices, FIFOs, and sockets
+by default devices are read when they specified as arguments or if -R is specified
+-D=read makes grep also read devices encountered with -r
+d=skip removes `Is a directory` messages
+-d=recurse is equivalent to -r
+--exclude applies to all files and --exclude-dir only applies to directories
+--exclude-from=file reads exclude patterns from a file
+there are no --include-dir  or --include-from options
+-R (--dereference-recursive) follows symlinks
+--line-buffering can make grep slower
+--mmap is now a no-op and results in a warning
+--mmap used to make grep use mmap instead of read
+-u and -U do not have any effect on other platforms than Windows or DOS
+-u (--unix-byte-offsets) makes -b not count carriage returns at the end of lines on Windows
+-U (--binary) disables ignoring carriage returns at the end of lines on Windows
+$ matches carriage returns on Windows when -U is specified
+-z (--null-data) changes the input separator and -Z (--null) changes the output separator
+`export GREP_OPTIONS='-I -d=skip'` doesn't match binary files and skips directories
+range expressions depend on LC_COLLATE and character classes depend on LC_CTYPE
+options are not allowed after regular arguments when POSIXLY_CORRECT is set
+-G (--basic-regexp) is the default
+-P is experimental may display warnings about unimplemented features
+egrep and fgrep have been deprecated by POSIX
+BRE are not less powerful than ERE in GNU grep
+PCRE are described on the pcresyntax and pcrepattern man pages
+[[:print:]] is equivalent to `[[:alnum:][:punct:] ]`
+[[:space:]] is equivalent to `[\t\n\v\f\r ]` in the C locale
+`grep '[:upper:]' <<< a` exits with 2 and prints `grep: character class syntax is [[:space:]], not [:space:]`
+`POSIXLY_CORRECT= grep '[:upper:]' <<< a` does not exit with an error
+[. represents the open collating symbol and .] represents the close collating symbol
+[= represents the open equivalence class and =] represents the close equivalence class
+[: represents the open character class symbol and :] represents the close character class symbol
+\< matches the empty string at the beginning of a word and \> matches the empty string at the end of a word
+\B matches an empty string at a word boundary and \B matches an empty string that is not at a word boundary
+\W is a synonym for [^_[:alnum:]] and \S is a synonym for [^[:space:]]
+backreferences are also supported in ERE
+a(.)|b\1 does not match ba
+the characters ?+{|() have to be escaped in BRE
+traditional egrep did not support { and some egrep implementations support \{ instead
+for example `grep -E '{1'` does not return an error, which is allowed by POSIX as an extension
+-lv prints the names of files with one or more non-matching lines
+-L (--files-without-match) prints the names of non-matching files
+
+#control characters listed by stty -a
+^? # erase
+^C # intr
+^D # eof
+^O # discard
+^Q # start
+^R # reprint
+^S # stop
+^T # status
+^U # kill
+^V # lnext
+^W # werase
+^Y # dsusp
+^Z # susp
+^\ # quit
+
+#printing the last history entry
+history -p '!!'
+fc -l -1|cut -d' ' -f2-
+  `-l -1` lists the last entry
+fc -nl -1|cut -b3-
+  -n removes line numbers but it keeps a tab and a space at the start of each line
+
+#rand() and srand() in awk
+if you run `awk 'BEGIN{print rand()}'` multiple times, it prints the same value each time
+  add srand to seed the random number generator
+`for i in - -;do awk 'BEGIN{srand();print rand()}';done` usually also prints the same value twice
+  srand is based on second-precision time (even in gawk and on Linux)
+
+#coreutils
+common options
+  cp, install, ln, and mv support -b and --backup
+  -b is equivalent to --backup=$VERSION_CONTROL or --backup=existing if VERSION_CONTROL is not set
+  -b does not accept an argument but --backup does
+  none (off) disables backups
+  numbered (t) makes numbered backups
+  existing (nil) makes numbered backups for files that already have numbered backups and simple backups for other files
+  simple (never) always makes simple backups
+  -S (--suffix) defaults to SIMPLE_BACKUP_SUFFIX or ~
+  fractional block counts are rounded up
+  BLOCK_SIZE specifies a block size for df, du, and ls
+  DF_BLOCK_SIZE, DU_BLOCK_SIZE, and LS_BLOCKSIZE override BLOCK_SIZE
+  BLOCK_SIZE overrides BLOCKSIZE
+  BLOCKSIZE does not affect values that are normally printed as a byte count like the file sizes printed by `ls -l`
+  if BLOCK_SIZE, BLOCKSIZE, or *_BLOCK_SIZE is not set and POSIXLY_CORRECT is set, the block size defaults to 512
+  BLOCK_SIZE=si is like BLOCK_SIZE=human-readable but it uses multiples of 10 instead of 2
+  --block-size=\'1kB causes 1234000 bytes to be displayed as 1,234 in the U.S. English locale
+  there is no thousands separator in the C locale so a leading ' has no effect
+  k and kiB are 2^10 and kB is 10^3
+  `chown 123 file` treats 123 as a username if there is a user named 123
+  `chown +123 file` always treats 123 as a UID
+  shuf, shred, and sort support --random-source
+  cp, install, ln, and mv support -T (--no-target-directory) and -t (--target-directory)
+  cp and mv support --strip-trailing-slashes
+  `chown -RL` follows symlinks specified as arguments and `chown -RH` follows all symlinks
+  --no-preserve-root allows running `rm -rf /`
+  `chmod --preserve-root -RH` does not modify /
+  old versions of POSIX required `sort +1` to sort starting from the second key
+  POSIX 1003.1-2001 requires `sort +1` to sort the file named +1
+  _POSIX2_VERSION can be set to 199209, 200112, or 200809
+  `_POSIX2_VERSION=199209 tail +10` is like `tail -n+10` instead of `tail ./+10`
+cat
+  -A is equivalent to -vET and -e is equivalent to -vE
+  -v displays all ASCII control characters except linefeed and tab using caret notation
+  -v displays characters that have the eight bit set with a M- prefix
+  -T displays tabs as ^I
+  -E prints $ after each line
+  -b is like -n but it skips blank lines
+  -u is included for POSIX compatibility and ignored
+  POSIX defines -u to write bytes to stdout without delay as each byte is read
+tac
+  `-s STRING` and `-r REGEX` change the record separator
+  -b inserts the separator before each record
+  `tac -rs 'x\|[^x]'` reverses a file character by character
+nl
+  \:\: is start of header, \:\: is start of body, and \: is start of footer
+od
+  -A (address) can be set to d, o, x, or n
+  `-A n` does not print offsets
+base64
+  -w0 disables wrapping
+fmt
+  -w is 75 by default, or -g plus 10 if -g is specified
+  `-g GOAL` initially tries to make lines GOAL characters wide
+  the goal is 7% shorter than the width by default
+  -s only splits lines without joining short lines
+  -u (uniform spacing) disables justifying text
+numfmt
+  `numfmt --from si 1M` prints 1000000
+  `numfmt --from iec 1M` prints 1048576
+  `numfmt --from si --to iec 1T` prints 932G
+fold
+  the default width is 80
+  -b counts bytes instead of characters
+  -s splits lines on word boundaries (spaces)
+head
+  -q doesn't print filename headers
+  the number-only options for head and tail are obsolete and they are only recognized before other options
+  `head -q -3` results in an error but `head -q -n3` or `head -3 -q` doesn't
+tail
+  -c+1k skips the first 1024 bytes
+  --follow=name keeps tracking a file that is unlinked and replaced with another file with the same name
+  -F is equivalent to `--follow=name --retry`
+  -q disables printing filename headers
+  `tail -1 file1 file2` results in an error but `_POSIX2_VERSION=199209 tail -1 file1 file2` doesn't
+  `tail +2 file` results in an error but `_POSIX2_VERSION=199209 tail +2 file` doesn't
+split
+  -l is 1000 by default
+wc
+  -L prints the length of the longest line
+sum
+  sum is provided for compatibility and using cksum is preferred
+  sum uses an algorithm compatible with BSD sum by default
+cksum
+  cksum uses the POSIX CRC algorithm which is not compatible with the algorithms used by sum
+md5sum
+  md5sum computes a 128-bit checksum and cksum and sum compute a 16-bit checksum
+  md5sum prints the checksum, a space, a space or an asterisk, and the filename
+  --quiet is more verbose than --status
+sort
+  -c is equivalent with --check=diagnose-first and -C is equivalent with --check=quiet
+  if file1 and file2 are sorted, `sort -m file1 file2` is equivalent to `sort file1 file2` but faster
+  -b ignores leading blanks
+  -d (--dictionary-order) only considers alphanumeric and blank characters
+  -V sorts version numbers
+  -i ignores non-printing characters, which doesn't include space
+  -g (--general-numeric-sort) is slower than -n (--numeric-sort)
+  -R is like shuf but identical lines are sorted together
+  --debug highlights the part of each line that is used for sorting
+  `POSIXLY_CORRECT= sort file -o file` results in an error but `sort -o file file` doesn't
+shuf
+  -e (--echo) prints the arguments in random order
+  `shuf -i 1-6` prints the integers 1 to 6 in random order
+  `shuf file -o file` shuffles file in place
+uniq
+  -D prints each repeated line and `uniq -d` only prints the first repeated line
+  -f2 ignores the first two fields and `uniq -s2` ignores the first two characters
+  -w2 only compares the first two characters
+  there is no way to specify a field separator for -f
+comm
+  --check-order exits with an error if either file is not sorted
+  `--output-delimiter=' '` changes the column delimiter from tab to space
+  --output-delimiter can't be empty
+ptx
+  -G disables GNU extensions
+date
+  `sudo date -s 'dec 31 2013 23:59:59'` sets the system time
+  `-r file` prints the modification time of file
+  `-f file` is like -d for each line of file
+  --rfc-3339=seconds uses a format like `2013-11-01 13:43:51+02:00`
+  -R uses a format like `Fri, 01 Nov 2013 13:43:51 +0200`
+  --rfc-2822 is -R but --rfc-3339 does not have a short option
+cut
+  `cut --output-delimiter ' ' -b1,3-4 <<< abcde` prints `a cd`
+  `--complement -f3,5` removes the third and fifth columns
+paste
+  -s (--serial) reads all lines from the first file before lines from the second file
+join
+  --check-order makes unsorted inputs cause a fatal error message
+  -a2 prints a line for each unpairable line in the second file in addition to the normal output
+  -v2 prints a line for each unpairable line in the second file instead of the normal output
+  `-e string` replaces empty output fields with string
+  -i ignores case
+  -t, changes the input and output field delimiter to a comma
+  `-t ''` is an empty string and `-t '\0'` is NUL
+  `-j 5` is equivalent to `-1 5 -2 5`
+  -t disables ignoring blanks at the start of the join field
+tr
+  `-d '[0-9]'` also deletes square brackets
+  `tr abc x` is equivalent to `tr abc xxx` in BSD and GNU and to `tr a x` in System V
+  POSIX allows either the BSD or System V behavior but defines `tr abc '[x*]'` to be equivalent to `tr abc xxx`
+  -t (--truncate-set-1) uses the System V behavior
+  `tr -cs '[:alpha:]' '[\n*]'` replaces sequences of non-alphabetic characters with a linefeed
+  -c and -C are equivalent in coreutils but according to POSIX -C should treat multi-byte characters as single characters
+xargs
+  `-a /tmp/file` reads arguments from /tmp/file instead of stdin
+  `-E EOF` makes xargs ignore the rest of the input after EOF appears as a line in the input
+  -I implies -L1 and -x
+  -L1 processes one line at a time
+  -x exits if the size limit is exceeded
+  -e is a synonym for -E but not defined by POSIX
+  -l is a deprecated synonym for -L
+  -l and -i were removed in POSIX.1 2004
+  -s10000 limits command line length to 10000 bytes
+  -r disables running the command when there is no input
+  -p prompts the user before running each command
+  --show-limits displays limits on the command line length
+  -P0 runs as many parallel processes as possible
+
+#support for parameter expansion
+the 7th edition Bourne shell only supported ${x-y}, ${x+y}, ${x=y}, ${x?y}
+POSIX does not define ${x:y}, ${x:y:z}, ${x[@], ${x[*]}, ${x/y/z}, or ${!x}
+ksh88 does not support ${x/y/z} or ${x[@]%y} but ksh93 does
+
+#checking if a command exists on the path
+which is not defined by POSIX
+`command -v`, hash, and type are defined by POSIX
+`command -v` also includes builtins, so for example `command -v .` prints .
+`type -P` only searches the path but it is not defined by POSIX
+
+#prepending a line to a file
+gsed -i '1iline to prepend' file
+sed -i '' $'1i\\\nline to prepend\n' file
+  OS X's sed requires using `-i ''` instead of -i
+  OS X's sed requires inserting a backslash and a newline after i and doesn't add a newline after the inserted text
+ex file $'0a\nline to prepend\n.\n2'
+printf %s\\n 0a 'line to prepend' . w|ed -s file
+
+#creating a video for an audio file with ffmpeg
+ffmpeg -loop 1 -i image.png -i audio.m4a -c:a copy -c:v libx264 -crf 20 -pix_fmt yuv420p -shortest output.mp4
+you can use mkv or mov as the container by changing the name of the output file
+`-loop 1` loops the image infinitely so that it is not shown for just one frame
+`-loop 1` makes the video stream infinitely long, so -shortest is needed to finish encoding after the audio stream finishes
+-shortest has to be after the input files in new versions of ffmpeg
+-crf (constant rate factor) can be from 0 (lossless) to 51 (lowest quality)
+the default pixel format is yuv444p, which is not supported by many video players
+you can use a black background by replacing `-loop 1 -i image.png` with `-f lavfi -i color=c=black:s=1280x720`
+you can resize an image by adding an option like `-filter:v '[in] scale=-1:720, pad=1280:720:640-iw/2 [out]'`
+
+#cut -c, -b, and -n
+-b was added after -c
+-c should consider multi-byte characters as single characters according to POSIX but it is equivalent to -b in coreutils
+-n should disable splitting multi-byte characters according to POSIX but it is a no-op in coreutils
+-c and -n have the POSIX behavior in OS X
+
+#creating a sequentially numbered directory for every n files
+i=0;for f in *;do d=$((i/100+1));let i++;mkdir -p $d;mv "$f" $d;done
+ls|parallel -k -n100 mkdir -p {#}\;mv {} {#}
+  -k keeps the order of the lines and {#} is the sequence number
+i=1;while read l;do mkdir -p $i;mv $l $((i++));done< <(ls|xargs -n100)
+
+#removing all except the last duplicated line
+tail -r|awk '!a[$0]++'|tail -r
+gawk '{a[$0]=NR}END{PROCINFO["sorted_in"]="@val_num_asc";for(i in a)print i}'
+
+#gawk
+getline<"file.txt" changes $0 and other variables but `getline var<"file.txt"` doesn't
+`while((getline l<"file.txt")>0)` can be replaced with `while(getline l<"file.txt")`
+`while(getline l<"file.txt")print l;close("file.txt")` reads all lines from file.txt
+`"cmd"|getline v;close("cmd")` reads the first line of cmd to v
+int(101*rand()) prints a random number between 0 and 100
+a backslash is allowed as a line continuation inside a regex
+-i file.awk includes file.awk
+-b disables treating multibyte characters as single characters
+-c uses a compatibility mode where awk behaves like Brian Kerningham's version of awk
+-D enables debugging
+-E is like -f but it terminates option processing and doesn't allow variable assignments like var=value
+-L (--lint) warns about dubious or nonportable constructs
+-M (--bignum) enables arbitrary precision arithmetic
+-M only has effect if awk was compiled to use the MPFR and MP libraries
+-n (--non-decimal-data) interprets octal and hexadecimal constants like 020 and 0x1 as numbers in the input data
+-p saves profiling information to awkprof.out
+-P disables extensions not allowed by POSIX and gawk extensions, -c disables only gawk extensions
+-S (--sandbox) disables the system() function, input and output redirection, and dynamic extensions
+-t warns about constructs that are not available in V7 awk
+-f and -i default to .:/usr/local/share/awk if AWKPATH is not set
+--posix and --traditional disable using AWKPATH
+GAWK_MSEC_SLEEP is rounded up to an integral number of seconds on systems that don't support usleep()
+`@load "ordchr"` loads ordchr or ordchr.so on AWKLIBPATH
+an \x escape sequence is terminated by the first non-xdigit character
+POSIX does not allow \x
+old versions of awk did not support interval expressions in regex but POSIX requires support for them
+gawk did not support interval expressions until version 4.0
+-c removes support for interval expressions but `-c --re-interval` allows interval expressions
+for example /+/ is equivalent to /\+/ in gawk but treated as an error in other versions of awk
+[]a] and [a\]] match ] or a but [a]] doesn't
+[\]\\] matches ] or \ in POSIX ERE
+POSIX ERE are based on the regex format used by traditional versions of egrep
+[[=e=]] matches e or for example an e with an acute accent in UTF-8 locales
+nawk doesn't support \s, \S, \w, \W, \<, \}, \y, \B, \`, or \'
+\S is equivalent to [^[:space:]] and \W is equivalent to [^[:alnum:]_]
+\< matches the empty string at the beginning of a word and \> matches the empty string at the end of a word
+\y matches the empty string at either the beginning or end of a word, like \b in other regex implementations
+\B matches the empty string that occurs between two word-constituent characters
+^ always matches the beginning of a string and $ always matches the end of a string
+\` and \' are equivalent to ^ and $ and provided for compatibility
+other implementations of awk don't rebuild $0 when NF is decremented
+RT is the text that matched RS
+RT is set to an empty string when an input file doesn't match RS
+RS="\0" makes the whole input into a single record in gawk but is equivalent to RS="" in other implementations
+FS="" makes each character into a separate field but it is not specified by POSIX and doesn't work with -c
+`-c -Ft` assigns FS to a tab
+`IGNORECASE=1 FS="x"` is like FS="x" but `IGNORECASE=1 FS="[x]"` is like FS="[xX]"
+FS=FS returns to using FS instead of FIELDWIDTHS
+PROCINFO["FS"] can be FS, FIELDWIDTHS, or FPAT
+FPAT="([^,]+)|(\"[^\"]+\")" CSV file that includes fields double quotes
+RS="" is like RS="\n\n+" but it skips empty lines at the start and removes the last line if the input doesn't end with a newline
+setting RS to a regex is not specified by POSIX
+`"a " "b"|getline` is treated as `("a " "b")|getline` in nawk and most versions of gawk but as `"a "("b")|getline` in mawk
+in other implementations the number of pipelines that can be open at the same time is limited to one
+PROCINFO["/dev/stdin","READ_TIMEOUT"]=5000 makes the program terminate if there is no input within 5 seconds
+specifying a directory as an argument is a fatal error with --posix or -c
+%.0f rounds numbers and %d truncates numbers
+a format specifier starts with the character %, ends with a format-control letter, and contains optional modifiers between them
+`printf "%c",1234` prints U+042D in gawk
+`printf %c` only works with single byte characters in other implementations
+%d and %i are equivalent, and %i is provided for compatibility with C
+%f prints negative infinity as -inf or -infinity, positive infinity as inf or infinity, and NaN as -nan or nan
+%u has limited use in awk because all numbers are floating-point
+gawk switches to %g when using an integer format-control letter with a value outside the range of the widest C integer type
+`printf "%2$s %1$s"`,"b","a" is equivalent to `printf "%s %s","a","b"`
+%#x prints a leading 0x
+`printf "%x",-1` prints ffffffff and `printf "%o",-1` prints 37777777777
+`LC_NUMERIC=en_US.UTF-8 gawk 'BEGIN{printf "%'\''d",1234}'` prints 1,234
+`printf "%'d"` does not print decimal separators when LC_NUMERIC is C
+the single quote modifier is a POSIX extension to ISO C
+`printf "%*.*s",5,3` is equivalent to `printf "%5.3s"`
+awk does not support the l, L, or h modifiers
+in other implementations `print "error"|"cat 1>&2"` can be used instead of `print "error"|"/dev/stderr"`
+
+#POSIX xargs
+xargs exits if the command returns 255
+" and \ have to be escaped inside double quotes and ' and \ have to be escaped inside single quotes
+the maximum length of the command line is ARG_MAX - 2048
+when -E is not specified, implementations are allowed to either use underscore as the EOF marker or to use no EOF marker
+-I ignores unescaped blank characters at the beginning of lines
+-I implies -x
+-x terminates if the constructed command line does not fit in the default size or the size specified by -s
+-I, -L, and -n are mutually exclusive
+`sed 's/[^[:alnum:]]/\\&/g'` escapes input for xargs
+
+#info
+space scrolls a page down or selects the next node and backspace scrolls a page up or selects the next node
+n selects the next node, p selects the previous node, and u goes up
+] selects the next node considering all nodes as a sequence
+g(bash) selects the bash node
+4 selects the fourth menu item
+tab moves the point to the next cross-reference and C-M-i moves the point to the previous cross-reference
+fxyz follows the first cross-reference that starts with xyz and mxyz selects the first menu item that starts with xyz
+l goes back to the last visited node and r goes back to the node visited before using l
+L shows a menu of visited nodes
+> goes to the final node
+sxyz selects the first node that contains xyz and Ixyz displays a list of nodes that contain xyz
+ixyz searches for xyz in the index, which contains for example the names of nodes and command line options
+, selects the next result after using i
+
+#ffmpeg
+chained filters form a filter graph
+simple filter graphs have exactly one input and output that are both of the same type
+complex filter graphs can have multiple inputs or outputs or an input and output of a different type
+-filter is for simple filter graphs and -filter_complex is for complex filter graphs
+some filters like fps change the properties of frames but not the contents of frames
+stream copy mode is used when a codec is set to copy
+filters cannot be applied in stream copy mode because filters work on uncompressed data
+the a:1 stream specifier matches the second audio stream
+-codecs lists media bitstream formats
+-filters lists the available libavfilter filters
+-bsfs lists bitstream filters
+`ffmpeg -i input.flac -id3v2_version 3 output.mp3` uses ID3v2.3 instead of ID3v2.4
+`-fs 1024` sets the file size limit to 1 MB
+-ss seeks the input file when it is used as an input option
+-ss decodes but discards input when it is used as an output option
+using -ss as an output option can be slower but more accurate
+`-timestamp now` sets the recording timestamp to the current time
+`-metadata title='New Title'` sets the title
+`-metadata:s:a:1 language=eng` sets the language of the first audio stream
+`ffmpeg -i input.mp4 -target pal-dvd output.mpg` sets other format options automatically
+`-frames 1` stops writing to the stream after a single frame
+-qscale is an alias for -q
+-pre specifies a preset for matching streams
+-nostdin or </dev/null disables reading from stdin
+`-attach DejaVuSans.ttf -metadata:s:2 mimetype=application/x-truetype-font` attaches a font to an mkv file
+`ffmpeg -dump_attachment:t:0 DejaVuSans.ttf -i input.mkv` extracts the first attachment
+`-dump_attachment:t ''` extracts all attachments using filenames based on filename tags
+-vframes is an alias for -frames:v
+`-pass 2` uses two-pass encoding
+-sws_flags sets SwScaler flags
+-vdt sets the discard threshold
+-deinterlace is deprecated
+`-vf yadif` can be used instead of -deinterlace
+-ar sets the audio sampling frequency
+-atag is an alias for -tag:a
+`-guess_layout_max 0` disables guessing the audio layout
+`-guess_layout_max 2` recognizes 2 channels as stereo but not 6 channels as 5.1
+-scodec is an alias for -codec:s
+-bsf, -absf, and -sbfs have been deprecated
+-fix_sub_duration is needed with some DVB subtitles
+`-map 0` maps all streams
+`-map 0:v -map 0:a:2` selects all video streams and the third audio stream
+`-map 0 -map -0:a:1` selects all streams except the second audio stream
+
+#bash
+source is a special builtin but not defined by POSIX
+`-o posix` does not enable xpg_echo
+`help -d` prints a description, `help -m` uses a manpage-like format, and `help -s` prints a short synopsis
+process substitution is not available when bash is invoked as sh
+
+#unsorted
+GNU/Linux comes with a BSD-like df, but for example HP-UX comes with a SysV-like df
+in es semicolon is a null statement and used as the primary prompt
+8 1/2 is the Plan 9 window manager
+comments start with \" in troff
+sha224sum, sha256sum, sha384sum, and sha512sum compute SHA-2 hashes
+Bourne shells supported `VAR=value;export VAR` but not `export VAR=value`
+roff and nroff were based on RUNOFF
+locate includes files from a volume that was mounted when the database was updated even if the volume is no longer mounted
+signal names and numbers are defined in signal.h
+you can run the current command on the background by pressing control-z and running bg
+s is sin, c is cos, l is ln, and e is exp in bc
+`ls -lt` and `ls -lS` use a descending order

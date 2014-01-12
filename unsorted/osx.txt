@@ -1,0 +1,741 @@
+#AppleFontSmoothing
+System Preferences used to include additional light and strong text rendering settings in 10.5 and earlier
+you can still use the light setting by running `defaults write -g AppleFontSmoothing -int 1` and quitting and reopening applications
+0 corresponds to Standard - Best for CRT, 1 corresponds to Light, 2 corresponds to Medium - Best for Flat Panel, and 3 corresponds to Strong
+0 corresponds to disabling LCD font smoothing and 2 corresponds to enabling LCD font smoothing
+
+#installing bash 4
+run `brew install bash;echo /usr/local/bin/bash|sudo tee -a /etc/shells;chsh -s /usr/local/bin/bash`
+chsh only allows selecting shells in /etc/shells
+chsh changes the default login shell
+the default login shell can also be changed from System Preferences or with `sudo dscl . -change /Users/$USER UserShell /usr/local/bin/bash`
+
+#word break settings
+the option to change the word break setting was removed from System Preferences in 10.9
+you can still use the English (United States, Computer) by running `defaults write -g AppleTextBreakLocale en_US_POSIX`
+setting the region to to English (United States, Computer) stilll also changes the word break behavior in 10.9
+the only difference I have found between United States and United States (Computer) is that . and : are not part of words in United States (Computer)
+' and _ are part of words between alphabetic ASCII characters with both settings
+the characters $+<=>^` are not part of the start or end of words next to alphabetic ASCII characters with either setting
+aa.11 or aa'11 are not single words with either setting
+11.11 and aa_11 are single words with both settings
+
+#taking a screenshot on another Mac
+enable SSH on the other computer by checking System Preferences > Sharing > Remote Login
+run `ssh username@other_computers_ip`
+run `sudo screencapture /tmp/screenshot.png`
+
+#cron
+the crontab format is described in `man 5 crontab`
+cron adds a message to /var/mail when a command has any stdout or stderr output
+adding `MAILTO=""` to the start of a crontab disables sending mail messages
+you can remove existing mail messages with `sudo rm /var/mail/$USER`
+the default PATH is /usr/bin:/bin even if you have added a setenv command for changing PATH in /etc/launchd.conf
+the default SHELL is /bin/sh, but you can change it by adding adding a line like SHELL=/usr/local/bin/bash to the start
+the locale variables are unset by default, but you can change them by adding a line like LANG=en_US.UTF-8 to the start
+`sudo crontab -e` edits the crontab of the superuser
+% is replaced with a newline in the command field
+\% escapes a % character
+\ does not have to be escaped as \\ unless it precedes %
+you can enable logging by adding `cron.* /var/log/cron.log` to /etc/syslog.conf and unloading and loading com.apple.syslogd.plist
+1-2,4-5 is the same as 1,2,4,5 and 1-7/2 is the same as 1,3,5,7
+entires in /etc/crontab need to have a sixth field for the username, like `* * * * * username command`
+@hourly is equivalent to `0 * * * *` and @daily is equivalent to `0 0 * * *`
+`@reboot cmd` runs cmd after restarting but not after logging out and back in
+
+#launchd
+if `launchctl load` shows an error like `no plist was returned`, check for syntax errors with `plutil file.plist`
+if a property list in `/Library/` is not owned by root, it can be loaded without `sudo`, but it is not loaded automatically at login
+`launchctl load -w` modifies /var/db/launchd.db/com.apple.launchd.peruser.$UID/overrides.plist
+`sudo launchctl load -w` modifies /var/db/launchd.db/com.apple.launchd/overrides.plist
+the per-user overrides.plist can include a _com.apple.SMLoginItemBookmarks dictionary for login items for sandboxed applications
+<key>StandardOutPath</key><string>/tmp/a</string> redirects STDOUT to /tmp/a
+programs can only be run every 10 seconds
+if StartInterval is 9 seconds or less, the program gets throttled
+if a file specified with WatchPaths is modified within ten seconds from the last invocation, the program gets throttled
+EnableGlobbing enables tilde expansion and filename expansion for ProgramArguments
+EnableGlobbing does not affect Program or WatchPaths
+tilde expansion is enabled for WatchPaths by default but I don't know any way to enable filename expansion for WatchPaths
+LimitLoadToSessionType can be set to Aqua, Background, LoginWindow, StandardIO, or System, or an array of the five options
+if LimitLoadToSessionType is set to Aqua, the plist has to be unloaded with `launchctl load -S Aqua`
+If LimitLoadToSessionType is set to LoginWindow and RunAtLoad is set to true, the program is run when the graphical login window is shown
+<key>StartOnMount</key><true/> runs the program every time a volume is mounted
+<key>AbandonProcessGroup</key><true/> disables terminating background child processes when the program terminates
+KeepAlive is not needed with on-demand jobs
+<key>KeepAlive</key><dict><key>SuccesfulExit</key><true/></dict> restarts the program only if the program terminates with an exit status of 0
+StartCalendarInterval can be a dictionary or an array of dictionaries
+StartCalendarInterval can also include <key>Second</key> even though it is not mentioned in `man launchd.plist`
+jobs scheduled during sleep by StartCalendarInterval (but not by any other parameters) are run after waking up from sleep
+you can use <key>StartCalendarInterval</key><dict><key>Second</key><integer>0</integer></dict> to run a program after waking up from sleep
+you can embed a script in a plist with something like <key>ProgramArguments</key><array><string>bash</string><string>-c</string></array>
+setenv commands in launchd.conf don't work with values that contain spaces
+
+#different ways to log out to the fast user switching screen
+run `/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend`
+use the lock action in Alfred
+enable the fast user switching menu from the Users & Groups preference pane, and then select Login Window... from the menu
+
+#different ways to lock the screen
+enable "Require password immediately after sleep or screen saver begins" and use control-shift-eject or option-command-eject
+enable the Keychain menu extra from the preferences of Keychain Access, and then select Lock Screen from the menu
+
+#startup keys
+you can start holding the keys after the screen turns on (or when the startup sound would be played)
+starting to hold the keys before the computer has turned on does not work with an Apple Wireless Keyboard
+option shows Startup Manager (the screen for choosing different startup volumes)
+shift starts up in safe mode
+c starts up from an optical disk (CD)
+d (or option-d) opens Apple Hardware Test
+n attempts to start up from a NetBoot server
+t starts up in target disk mode
+option-n starts from a NetBoot server using the default boot image
+command-r starts from a recovery partition
+command-s starts up in single user mode
+command-v starts up in verbose mode
+option-command-pr resets NVRAM
+holding eject, F12, or a button on a pointing device ejects removable media (like optical disks)
+option-command-r starts up in Internet Recovery mode
+holding 6 and 4 starts up using a 64-bit kernel
+holding 3 and 2 starts up using a 32-bit kernel
+
+#mounting a USB drive in single user mode
+run `mount -uw /`
+run `launchctl load /System/Library/LaunchDaemons/com.apple.{notifyd,kextd}.plist`
+run `mkdir /tmp/mountpoint;mount_hfs /dev/disk1s2 /tmp/mountpoint`, where disk1s2 is the identifier of the disk
+after you are done, run `launchctl unload /System/Library/LaunchDaemons/com.apple.kextd.plist`
+if you don't unload com.apple.kextd, the reboot command will hang for some reason
+
+#Spotlight comments
+Spotlight comments added from Finder are saved both in .DS_Store files and as extended attributes
+if you use Finder to add a Spotlight comment for a file you don't have write permission to, the comment is not saved as an external attribute
+if you delete a .DS_Store file, Spotlight comments are still picked up by Spotlight, but they are not shown in Finder's information windows
+
+#Finder view options
+the default view mode (FXPreferredViewStyle) is changed when you close a Finder window
+the "Always open in ... view" checkbox enables saving a folder-specific view mode to a .DS_Store file
+if you check "Always open in column view" and change the view mode to icon view, the folder-specific view mode becomes icon view
+the view options panel does not have a Use as Defaults button in column view, because all windows use the same view options in column view
+the default view options are used for folders that don't have folder-specific view options saved in a .DS_Store file
+if for example you change the sorting mode of a folder, the mode is saved in a .DS_Store file which overrides the default setting
+
+#information stored in .DS_Store files
+the options shown in the view options panels for other view modes except column view
+the dimensions and shown parts of windows
+Spotlight comments of files in the folder
+the positions of icons in icon view
+
+#extended attributes
+com.apple.metadata:kMDItemDownloadedDate
+com.apple.diskimages.fsck: verification status for dmg files
+com.apple.quarantine: quarantine status and the application that downloaded a file
+com.apple.metadata:kMDItemWhereFroms: source URLs
+_kMDItemUserTags: tags in 10.9 and later
+com.apple.metadata:kMDItemFinderComment: Spotlight comment (also stored in a .DS_Store file)
+com.apple.FinderInfo: file flags (also stored in some other format)
+com.apple.TextEncoding: the encoding of files saved with an application like TextEdit
+net_sourceforge_skim-app_notes: notes saved by Skim
+com.apple.metadata:kMDItemScreenCaptureType
+com.macromates.selectionRange: position of the selection or caret
+com.apple.progress.fractionCompleted: for .download bundles
+
+#hidden extended attributes
+com.apple.system.Security: used to implement ACLs
+com.apple.decmpfs: used to implement HFS+ compression
+
+#information stored in resource forks
+information about aliases
+custom icons set if finder and the images of Icon\r files
+file-specific default applications
+metadata in PSD files
+script objects stored in scptd files, AppleScript Editor window state, and descriptions of scripts
+
+#AppleDouble
+the AppleDouble files that start with ._ are used to store extended attributes, ACLs, and resource forks in non-HFS volumes and in archives
+Archive Utility and tar create AppleDouble files but zip doesn't
+zip archives created with Archive Utility include a __MACOSX folder for AppleDouble files
+`COPYFILE_DISABLE= tar -c` or `tar --copyfile-disable -c` disables creating AppleDouble files
+`find . -name ._\* -delete` deletes AppleDouble files
+`dot_clean .` removes AppleDouble files after merging the metadata stored in them with metadata stored in native formats
+
+#extended attributes
+cp copies extended attributes and ACLs without -X
+rsync does not copy extended attributes or ACLs without -E
+10.5 and 10.6 included experimental support for extents-based extended attributes but it was not enabled by default
+in 10.6 the maximum length of an inline extended attribute was 3802 bytes
+`xattr -w testkey $(ruby -e 'print "a"*3803') test` resulted in an error in 10.6
+
+#resource forks
+resource forks are not stored as extended attributes
+resource forks can be accessed and modified by using the extended attributes interface or the named stream interface
+you can display a resource fork with `xattr -p com.apple.ResourceFork file` or `cat file/..namedfork/rsrc`
+`cat file/rsrc` stopped working in 10.7
+`xattr -dr com.apple.ResourceFork .` deletes resource forks
+`find . -type f -exec test -s {}/..namedfork/rsrc \; -print` finds files with resource forks
+if the resource fork of an alias is removed, the alias stops working
+
+#local Time Machine snapshots
+support for local snapshots was added in 10.7
+local snapshots are enabled by default on laptops and disabled on desktop Macs
+`sudo tmutil enablelocal` enables local snapshots and `sudo tmutil disablelocal` disables local snapshots
+the setting reverts to the default when you turn Time Machine off and back on from System Preferences
+local snapshots are saved to /Volumes/MobileBackups/ or /Volumes/*/.MobileBackups/
+local snapshots can be used to restore files, but they are not copied to backup volumes later
+
+#sandboxing
+since 10.8, sandboxed applications have crashed on launch if their Info.plist has been modified
+replacing the code signature with an ad-hoc signature with `codesign -f -s - /Applications/SomeApp.app` also disables sandboxing
+
+#Apple events
+Apple events are listed in AERegistry.h
+
+#HFS+
+HFS+ was introduced in Mac OS 8 in 1998
+HFS+ volumes contain several B-trees: a catalog B-tree an extents overflow B-tree, an attributes B-tree, and a hot file clustering B-tree
+typical HFS+ volumes have no block-special or character-special files because devices reside in the devfs pseudo file system
+the forks of files with hard links are stored in /\0\0\0\0HFS+ Private Data/
+
+#HFS compression
+support for HFS compression (transparently compressed files) was added in 10.6
+many of the files that are installed with OS X are compressed
+Clusters.app can be used to enable compression for other files
+most command line utilities and graphical applications display uncompressed sizes
+you can see the compressed size of a file with `sudo fileXray --diskusage`
+when a file is compressed, the data is stored in the resource fork and the data fork is empty
+compressed files have a com.apple.decmpfs extended attribute that is hidden by xattr
+`ditto --hfsCompression file1 file2` makes a compressed copy of file1 to file2
+`cp file1 file2` or `ditto --nopreserveHFSCompression file1 file2` makes a non-compressed copy of file1 to file2
+`stat -f%f` prints 32 if a file is compressed and has no other flags
+`ls -lO` displays `compressed` after the group name if a file is compressed
+
+#com.apple.quarantine
+the com.apple.quarantine extended attributes have values like `0042;5106ce90;Safari;119A94C7-09B5-4E53-805C-3CA43B6B9612`
+the second field is a timestamp
+the fourth field corresponds to the UUIDs in ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsv2
+the first field is an hexadecimal bit field
+bit 7 (2^6 or 0x40) usually gets set after you open a file
+if you try to open a file but press cancel in the warning dialog, bit 6 gets set but bit 7 does not
+
+#file quarantine
+support for file quarantine was added in 10.5
+`defaults write com.apple.LaunchServices LSQuarantine -bool false` disables the warnings shown when opening quarantined files
+setting LSQuarantine to false does not disable the warnings shown when opening an application for the first time
+setting LSQuarantine to false also disables Gatekeeper even if Gatekeeper was not disabled from System Preferences
+`sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2 .dump`
+`sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2 'select LSQuarantineDataURLString from LSQuarantineEvent'`
+`find . -xattrname com.apple.quarantine`
+when you extract a quarantined archive with Archive Utility or OS X's tar or zip, the extracted files are also quarantined
+if LSFileQuarantineEnabled is set to true in the Info.plist of an application, files created by the application will be quarantined
+quarantine for some applications is enabled in /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/Exceptions.plist
+
+#ssh-keygen
+you can create a private and public key pair (~/.ssh/id_rsa and ~/.ssh/id_rsa.pub) by running ssh-keygen and acceping the defaults in every step
+you can press return in the password step to not use a password
+if you enter a password, the password can be saved in OS X's keychain, so you don't usually have to type it manually
+you can upload the public key with `ssh username@host.com 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/id_rsa.pub` or `ssh-copy-id`
+if ~/.ssh/ or ~/.ssh/authorized_keys don't exist on the host, you can run `mkdir -p ~/.ssh/; chmod 700 ~/.ssh/; chmod 600 ~/.ssh/authorized_keys`
+versions of OpenSSH used authorized_keys2 for SSH2 and authorized_keys for SSH1
+authorized_keys2 is now deprecated and authorized_keys is used for both SSH2 and SSH1
+
+#enabling Apache
+the checkbox for enabling web sharing was removed in 10.8, but you can enable Apache by just running `sudo apachectl start`
+/usr/sbin/apachectl is a shell script on OS X
+`apachectl start` runs `launchctl load -w /System/Library/LaunchDaemons/org.apache.httpd.plist`
+to make `http://localhost/~username/` work, add a Directory entry for /Users/username/Sites to /etc/apache2/users/username.conf
+
+#setting environment variables with launchd
+`launchctl setenv VAR value` sets VAR for all new child processes of the user launchd process
+you can change VAR permanently by adding `setenv VAR value` to /etc/launchd.conf
+you can apply changes to /etc/launchd.conf by restarting or by running `launchctl < /etc/launchd.conf; sudo launchctl < /etc/launchd.conf`
+`launchctl export` prints export commands for launchd environment variables
+`sudo launchctl export` is empty by default
+variables defined with setenv in /etc/launchd.conf are listed by both `launchctl export` and `sudo launchctl export`
+~/.MacOSX/environment.plist stopped working in 10.8
+I haven't gotten ~/.launchd.conf to work
+/etc/launchd.conf is not read when you SSH to a computer
+
+#setting a default path
+add a line like `setenv PATH /Users/username/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin` to /etc/launchd.conf and restart
+~/bin would be /var/root/bin for a program run as root
+
+#putting /usr/local/bin before other directories on the PATH
+if /usr/local/bin is after /usr/bin, `brew doctor` displays a message recommending to place /usr/local/bin before /usr/bin
+some TextMate commands stop working if `env ruby` is a new version of Ruby
+
+#path_helper
+/usr/libexec/path_helper adds paths in /etc/paths and /etc/paths.d/* to the path
+path_helper is run from /etc/profile but not from /etc/bashrc
+/etc/paths contains /usr/local/bin at the end by default, but there are no files in /etc/paths.d/ by default
+
+#Alfred 2 workflows
+hotkeys have a short delay by default, but you can remove it by secondary-clicking a shortcut recorder and changing the trigger behavior
+you can get the selected files or text as input by adding a hotkey trigger with the argument set to "Selection in OS X"
+
+#folder actions
+a folder action can be an AppleScript with an `adding folder items` handler or an Automator workflow created using the Folder Action template
+Folder Actions Setup only allows selecting scripts and workflows in `~/Library/Workflows/Applications/Folder Actions/`
+Folder Actions Setup modifies `~/Library/LaunchAgents/com.apple.FolderActions.{enabled,folders}.plist`
+folder actions were reimplemented so that they rely on launchd in 10.5
+support for creating folder actions with Automator was added in 10.6
+the com.apple.FolderActions.folders job gets throttled if a folder with folder actions is modified within 10 seconds from the last invocation
+sometimes the current window loses focus for a split second when a folder action is run, but I don't know any workarounds for it
+there are some example scripts in `/Library/Scripts/Folder Action Scripts/`
+
+#logout hooks
+logout hooks were deprecated in 10.4
+I haven't figured out any way to reliably run programs on logout with launchd
+`sudo defaults write com.apple.loginwindow LogoutHook ~/.logouthook` adds a logout hook
+the last argument can only be a path to an executable and not a shell command
+there can be only one logout hook, but it can be a script that runs multiple programs
+`sudo defaults write com.apple.loginwindow` modifies /var/root/Library/Preferences/com.apple.loginwindow.plist
+adding a LogoutHook key to /Library/Preferences/com.apple.loginwindow.plist does not work
+if a logout hook takes long enough to run, a gray screen is shown until the logout hook terminates
+there is no time limit after which a logout hook is forced to terminate
+
+#making opensnoop work with arguments that contain spaces
+for example `sudo opensnoop -f /tmp/some\ file` and `sudo opensnoop -n Google\ Chrome` result in an error
+to fix it, replace `"'$pathname'"` with `"'"$pathname"'"` and `"'$pname'"` with `"'"$pname"'"` in /usr/bin/opensnoop
+
+#using an OS X VM with VMware Fusion
+VMware Fusion 5 does not support Mavericks but VMware Fusion 6 does
+if you have bought OS X from App Store, you can create a VM by downloading the installer application from App Store and dropping it on the new VM window
+if you download a torrent for OS X, just download an unmodified OS X installer application or disk image and not any modified ISO or VM image meant for PCs
+installing VMware Tools adds support for other resolutions than the default resolution and copy and paste between the guest and host
+if you want to restore the VM to the initial state later, take a snapshot before you start using it
+you can copy files between a VM and the host by adding a shared folder from Settings > Sharing
+shared folders appear in `/Volumes/VMware Shared Folders/` on the VM
+
+#using Arq to save backups to Amazon Glacier
+storing 100 GB at Glacier costs about 1 USD per month as of 2013
+5% of the data stored in a Glacier vault can be retrieved for free in a month
+if a vault contains 144 GB of files, you can retrieve 240 MB per day or 10 MB per hour for free
+retrieving 1 GB more than your daily free retrieval allowance over a day costs 1/24*0.01*720 = 0.3 USD
+retrieving 1 GB more than your daily free retrieval allowance over an hour costs 1*0.01*720 = 7.2 USD
+retrieving 100 GB more than your daily free retrieval allowance over 10 days costs 100/240*0.01*720 = 3 USD
+when you restore files, there is a delay of four hours before the transfer starts
+there is an early deletion fee of 0.03 USD per GB if you delete files within the first three months
+you can save storage space and bandwidth by telling Arq to save a snapshot only for example every 100 hours
+if a snapshot was scheduled when the Mac was sleeping or turned off, the snapshot is started after waking up
+you can find folders to exclude by for example running `du -sh ~/*/*|gsort -h`
+if you back up the whole home folder, for example ~/.Trash/ or ~/Library/Caches/ is not excluded by default
+when you use S3, old snapshots are deleted after you go over the monthly budget, but there is currently no way to delete old snapshots from Glacier
+
+#Power Nap
+Power Nap is currently supported by retina MacBook Pros and new MacBook Airs
+Power Nap is not enabled on battery power by default, but it can be enabled on battery power from System Preferences
+if Power Nap is enabled on battery power, it is suspended if battery charge is 30% or less
+Time Machine backups are performed hourly
+software updates are checked daily
+new Mail messages are checked only if Mail.app was running before going to sleep
+
+#standby mode
+standby mode is supported by new retina MacBook Pros and MacBook Airs and new iMacs and Mac minis with an SSD or a Fusion Drive
+when standby mode is enabled, the computer enters hibernation mode after a specific amount of time of being in normal sleep mode
+`pmset -g standbydelay` shows the delay before entering standby mode, which is 70 minutes on most Macs
+standby mode is only enabled on battery power on laptops
+standby mode is disabled if there is any USB or Thunderbolt device or an external display attached
+`sudo pmset -a standby 0` disables standby mode
+`sudo pmset -b standbydelay 14400` changes the delay before entering standby mode to 4 hours
+standby mode is only enabled if `pmset -g hibernationmode` is 3 or 25
+
+#boot-args=iog=0x0
+you can restore the pre-10.7 clamshell mode behavior by running `sudo nvram boot-args=iog=0x0` and restarting
+the internal display doesn't turn back on when the lid is opened
+the laptop goes to sleep when the lid is closed even when the laptop is connected to an external display
+`sudo nvram -d boot-args` deletes the boot-args NVRAM variable
+
+#grep versions
+`grep -V` returns `grep (BSD grep) 2.5.1-FreeBSD` in 10.8 and `grep (GNU grep) 2.5.1` in 10.7
+GNU grep 2.5.1 is from 2002
+you can install a newer version of GNU grep with `brew tap homebrew/dupes; brew install homebrew/dupes/grep`
+-P/--perl-regexp, --with-filename (but not -H), --label, and -u/--unix-byte-offsets were removed in 10.8
+-z/--decompress, -J/--bz2decompress, --exclude-dir, --include-dir, -S, -O, and -p were added in 10.8
+-p does not follow symlinks (the default), -S follows all symlinks, and -O follows only symlinks specified as arguments
+in both 10.7 and 10.8, -r and -R are equivalent and don't follow symlinks, but in newer versions of GNU grep, -r doesn't follow symlinks but -R does
+--exclude-dir can be used to exclude directory name patterns when using -r/-R, and --include-dir can be used to override --exclude-dir
+in 10.7 -Z was equivalent with --null, but in 10.8 -Z is equivalent with -z/--decompress
+
+#Finder flags defined in Finder.h
+kIsOnDesk 0x0001
+kColor 0x000E
+kIsShared 0x0040
+kHasNoINITs 0x0080
+kHasBeenInited 0x0100
+kHasCustomIcon 0x0400
+kIsStationery 0x0800
+kNameLocked 0x1000
+kHasBundle 0x2000
+kIsInvisible 0x4000
+kIsAlias 0x8000
+
+#Finder color labels
+`tell application "Finder" to set label index of item 1 of (get selection) to item 1 of {2, 1, 3, 6, 4, 5, 7}` sets the label to red
+`xattr -p com.apple.FinderInfo file | head -n1 | cut -c28-29` prints the bit used for the kColor flag
+red is C, orange is E, yellow is A, green is 4, blue is 8, magenta is 6, and gray is 2
+bit 1 (kIsOnDesk) is not used on OS X
+the kColor flag is listed in Finder.h but not in hfs_macos_defs.h
+
+#two-sided printing
+select Paper Handling > Pages to Print > Odd Only and print
+if the total number of pages is odd, either remove the last page or don't remove any pages depending on the printer
+either flip the pile of papers and set the order to reverse or don't flip the papers and don't set the order to reverse depending on the printer
+select Even Only and print
+
+#speech commands
+`[[slnc 2000]]` pauses for two seconds
+`[[volm 0.5]]` reduces volume
+`[[rate 200]]` speaks at 200 words per minute
+`[[emph +]]` starts an emphasis and `[[emph -]]` ends an emphasis
+`[[nmbr LTRL]]1234[[nmbr NORM]]` speaks each number individually
+
+#reinstalling OS X
+10.6 added support for reinstalling OS X over an existing installation while keeping user files and settings in place
+I have done it twice so far, and it fixed multiple issues both times, so I have started to recommend it as a troubleshooting step at Stack Exchange
+in 10.7 and later you can reinstall OS X from the recovery partition by choosing Reinstall OS X without erasing the OS X partition first
+
+#erasing and reinstalling OS X
+start up from the recovery partition, erase the OS X partition from Disk Utility, and choose Reinstall OS X
+if you erase the whole drive, it also erases the recovery partition and EFI partition that are hidden from Disk Utility
+if you erase the whole drive but don't restart the Mac, you can still continue to the Reinstall OS X step
+if you do restart and your Mac supports Internet Recovery mode, it can download a disk image for the recovery system from Apple's servers
+
+#erasing an SSD securely
+the Security Options button in Disk Utility is currently disabled for SSDs
+according to a KB article by Apple, erasing an SSD normally might be secure enough
+it is still possible to run something like `diskutil secureErase freespace 4 disk0s2` from Terminal on the recovery partition
+another option is to turn on FileVault 2 before erasing the drive
+performing a remote wipe also just erases the encryption key if FileVault 2 is enabled
+
+#Internet Recovery mode
+Internet Recovery mode is supported by Macs that came with 10.7 or a newer version of OS X and some older Macs after a firmware update
+Internet Recovery mode means that the Mac downloads a disk image for the recovery system from Apple's servers
+you can use Internet Recovery mode to install OS X on an empty drive after replacing the drive or erasing the whole drive
+holding option-command-R forces starting up in Internet Recovery mode
+
+#ditto and cp
+in older versions of OS X cp didn't include resource forks but ditto did, cp now includes extended attributes and resource forks unless you add -X
+if the target directory exists, ditto merges it with the source directory
+`ditto file.txt /tmp/a/b/` creates a and b if they don't already exist
+ditto preserves modification times, access times, groups, and owners by default, but cp doesn't preserve any of them without -p (or -a / -Rp)
+cp shows errors about broken symlinks, but ditto and Finder just copy the symlinks without showing any errors
+
+#decomposed filenames
+HFS+ stores many characters in decomposed form instead of composed form
+for example LATIN SMALL LETTER A WITH DIAERESIS is converted to LATIN SMALL LETTER A + COMBINING DIAERESIS
+HFS+ uses a variant of NFD (normal form decomposed) where some ranges of characters are not decomposed
+`iconv -f utf-8-mac -t utf-8` converts text from the NFD variant used by HFS+ to NFC
+`touch $'\xc3\xa4';ls|tr -d \\n|xxd -p` prints 61cc88
+`touch $'\xc3\xa4';ls|tr -d \\n|iconv -f utf-8-mac -t utf-8|xxd -p` prints c3a4
+bash 4.1 and later treat the decomposed and precomposed forms as equivalent for filename completion and globbing on OS X
+in bash 3.2 a precomposed a-umlaut does not complete to a decomposed a-umlaut, but in bash 4.1 it does
+many other Unix filesystems don't enforce any normalization form
+
+#using iTerm 2 in full screen
+you can open new windows in full screen by selecting Profiles > Window > Settings for New Windows > Style > Fullscreen
+you can tell iTerm to use a custom implementation for full-screen windows by unchecking "Use Lion-style Fullscreen windows"
+the custom full-screen windows don't have animations, don't disable command-H, and can have windows from other applications on top of them
+there is a bug where if a window is restored by Resume, the menu bar is always shown in custom full screen windows
+you can disable Resume in just iTerm with `defaults write com.googlecode.iterm2 NSQuitAlwaysKeepsWindows -bool false`
+
+#rebuilding the Launch Services database
+run `$(locate lsregister) -kill -domain local -domain system -domain user`
+-r or -seed is not needed, but if you leave out the -domain arguments, lsregister won't access as many files
+rebuilding the Launch Services database usually fixes an issue where Finder's open with menus include multiple copies of applications
+one effect of rebuilding the Launch Services database is that it causes the dialogs about opening applications for the first time to be shown again
+
+#files excluded from Time Machine backups
+/System/Library/CoreServices/backupd.bundle/Contents/Resources/StdExclusions.plist contains paths that are excluded by default
+StdExclusions.plist contains for example /var/folders/, ~/Library/Logs/, ~/Library/Caches/, and /.Spotlight-V100/
+`sudo defaults read /Volumes/*/Backups.backupdb/*/Latest/.exclusions.plist` shows files excluded from a snapshot
+the list of folders excluded from System Preferences is stored in /Library/Preferences/com.apple.TimeMachine.plist
+`sudo mdfind com_apple_backup_excludeItem=com.apple.backupd` finds excluded files
+`tmutil addexclusion ~/folder` adds a com.apple.metadata:com_apple_backup_excludeItem extended attribute
+`sudo tmutil addexclusion -p ~/folder` adds the folder to /Library/Preferences/com.apple.TimeMachine.plist
+
+#sh
+/bin/sh is a POSIX-conformant version of bash in OS X
+/bin/sh is not a symlink or hard link to /bin/bash, but it is almost identical with /bin/bash
+`diff -y --suppress-common-lines -W 80 <(strings /bin/bash) <(strings /bin/sh)` shows only three differences
+sh enables xpg_echo and makes FCEDIT default ed instead of EDITOR or ed but `bash --posix` does not
+
+#downloading a YouTube video with Safari
+open the resources tab of the web inspector, double-click the videoplayback resource, focus the location bar, and press option-return
+command-S does not save the actual video file but focusing the location bar and pressing option-return does
+another option is to use youtube-dl
+
+#pbpaste and pbcopy encodings
+pbpaste and pbcopy don't use UTF-8 by default when the locale variables are unset or set to C
+Terminal and iTerm 2 set LANG to something like en_US.UTF-8 by default, but for example AppleScript Editor and Automator don't
+`LC_CTYPE=C pbpaste` garbles up non-ASCII characters but `LC_CTYPE=UTF-8 pbpaste` preserves preserve non-ASCII characters
+LC_CTYPE can be set to just UTF-8, but LC_ALL and LANG have to include the language and territory parts, like en_US.UTF-8
+
+#collation orders
+the UTF-8 locales use ASCII collation order for ASCII characters on OS X
+`printf 'a\nB\n'|LC_COLLATE=en_US.UTF-8 sort` prints B before a on OS X but a before B on Ubuntu
+a-umlaut is sorted after z in OS X but between a and b in Ubuntu
+
+#locale settings
+the list of languages selected in System Preferences is stored in the AppleLanguages dictionary in ~/Library/Preferences/.GlobalPreferences.plist
+`defaults read -g AppleLocale` and `osascript -e 'user locale of (system info)'` are the region selected in System Preferences
+Terminal and iTerm 2 set LANG based on the region selected in System Preferences by default
+`sudo languagesetup` and Setup Assistant change the first item in the AppleLanguages array in `/Library/Preferences/.GlobalPreferences.plist`
+the language in `/Library/Preferences/.GlobalPreferences.plist` is used on the login window and by the guest user
+the first item in AppleLanguages in /var/root/Library/.GlobalPreferences.plist is used on the lock screen when opening applications as root
+
+#defaults
+`sudo defaults write -g` modifies /var/root/Library/Preferences/.GlobalPreferences.plist
+`sudo defaults write /Library/Preferences/.GlobalPreferences.plist` modifies /Library/Preferences/.GlobalPreferences.plist
+`defaults -currentHost write -g` modifies ~/Library/Preferences/ByHost/.GlobalPreferences.*.plist
+defaults used to require specifying the paths of property lists without a .plist extension in 10.7 and earlier
+defaults still can't be used with property lists that don't have a .plist extension
+
+#displaying passwords with security
+Keychain Access and Safari require entering the password of the keychain when you try to show the password of a keychain item
+other applications using the keychain are allowed to access keychain items if the user just clicks an allow button
+`security find-internet-password -s accounts.google.com -w` and `security dump-keychain` don't require entering any password
+`osascript -e 'tell app "System Events" to click button 2 of group 1 of window 1 of process "SecurityAgent"'` clicks an allow button
+
+#resizing images
+sips and Automator use a resizing method which makes images look fairly blurry when you make images smaller
+Preview used to use a resizing method similar to sips and Automator, but it was changed in 10.8
+I usually use ImageMagick with `-filter lanczos2` and no additional sharpening
+lanczos2 (2-lobe lanczos) is less sharp than lanczos (3-lobe lanczos) and almost identical with catrom
+lanczos2 and catrom are also similar to the bicubic option in Photoshop
+
+#VLC subtitles
+I haven't found any way to center subtitles vertically
+you can set a default vertical offset in Preferences > Show All > Video > Subtitles/OSD
+you can also assign keyboard shortcuts for moving subtitles up and down in the hotkeys tab
+VLC displays characters that are not included in the subtitle font as rectangles by default
+if you need to display subtitles in a language like Japanese, you can just change the subtitle font
+if characters in .ass subtitles appear as boxed A characters from the LastResort font, try changing the bold attributes from 0 to -1
+
+#X font metadata files
+XQuartz and X11 save metadata files to directories that contain fonts
+the files are described in `man mkfontdir`
+`find . \( -name fonts.dir -o -name encodings.dir -o -name fonts.list -o -name fonts.scale \) -delete` deletes the files
+
+#custom keyboard layouts
+custom keyboard layouts are documented in Text Input Source Services Reference, TN2056, and TextInputSources.h
+Ukelele is a GUI for editing .keylayout files
+New From Current Input Source assigns a new ID to the keyboard layout automatically in Ukelele 2.2 and later
+keyboard layouts in `~/Library/Keyboard Layouts/` can't be selected in password dialogs or the login window but ones in /Library/Keyboard Layouts/ can
+to apply changes to a keylayout file or bundle, run for example `sudo touch /Library/Keyboard\ Layouts` and log out and back in
+the popovers shown when holding keys don't work with XML keylayout files, but they work with Ukelele's bundle format
+key combinations like control-A don't work in many text views if they are not assigned to control characters like &#0;
+some keys like escape have to be assigned to specific control characters
+option is left option (leftOption results in an error), rightOption is right option, and anyOption is left or right option
+anyOption? means that either key can be up or down
+right modifier keys have been registered as left modifier keys on all keyboards I have tested with
+caps lock can be used as a fifth modifier key
+you can use KeyRemap4MacBook to remap another key (like right option) to a holdable caps lock
+you can disable preinstalled input sources by removing them from ~/Library/Preferences/ByHost/com.apple.HIToolbox.*.plist
+
+#setting a default application for text files without an extension and executable scripts
+add entries for public.plain-text and public.unix-executable to com.apple.LaunchServices.plist
+you can apply the changes by restarting (just logging out and back in isn't enough)
+another option is to use duti
+
+#installing developer applications after Xcode 4.3
+/Developer/ was removed in Xcode 4.3
+a few applications are in /Applications/Xcode.app/Contents/Applications/ and they can also be opened from Xcode's menu bar
+Property List Editor was removed, but Xcode displays property lists in a graphical editor like it by default
+other applications are now part of the Accessibility Tools, Audio Tools, Auxiliary Tools, Graphic Tools, and Hardware IO Tools packages
+
+#command line tools
+the command line tools package has not been installed with Xcode since Xcode 4.3
+most of the binaries are also included in the usr/bin/ or Tools/ directories in /Applications/Xcode.app/Contents/Developer/
+for example `xcodebuild -find SetFile` prints /Applications/Xcode.app/Contents/Developer/usr/bin/SetFile
+
+#terminating processes during logout
+processes that support sudden termination are sent a KILL signal
+cocoa applications are sent the applicationShouldTerminate: delegate method
+foreground applications are sent a quit application Apple event
+background applications are sent a quit application Apple event, which is followed by a KILL signal
+daemons are sent a TERM signal, followed by a KILL signal a after a few seconds
+
+#directories and files that can take up disk space
+if pmset -g hibernatemode is 3 and you have 8 GiB of RAM, /var/vm/sleepimage takes up about 8 GiB.
+`~/Library/Caches/com.apple.Safari/Webpage Previews/` contains thumbnails for pages opened in Safari
+~/Library/Caches/Metadata/Safari/History/ contains plain text contents for pages and text files opened in Safari
+/Library/Dictionaries/ is about 300 MB in 10.8 and later
+/var/folders/ can contain partially downloaded files or files for applications that have been removed
+/Library/Developer/ was not removed when I installed Xcode 4.3, and it contained about 2 GB of docset files
+`~/Library/Autosave Information/` can contain old unsaved documents
+`~/Library/Mail Downloads/` contains attachments opened from Mail
+
+#sleep and hibernation modes
+`man pmset` recommends setting hibernatemode to 0, 3, or 25
+laptops default to 3 and desktop Macs default to 0
+3 keeps the RAM powered but the contents of the RAM are also saved to the disk
+0 (sleep mode) does not save the contents of the RAM to the disk
+25 (hibernation) doesn't keep the RAM powered
+`sudo pmset -a hibernatemode 0` disables saving /var/vm/sleepimage on laptops
+
+#different ways to reset the login password of an account
+start up from the recovery partition, open Terminal, and run resetpassword
+start up in single user mode, load com.apple.opendirectoryd.plist, and run `dscl . passwd /Users/username newpassword`
+remove /var/db/.AppleSetupDone in single user mode, reboot, create a new admin account, and reset the password from System Preferences
+
+#DaveGrohl
+the hash of the login password is stored in /var/db/dslocal/nodes/Default/users/username.plist in 10.7 and 10.8
+in 10.7 it was easy to crack even relatively complex passwords
+10.8 switched to PBKDF2, which limits cracking tools to about 10 guesses per second per core
+`sudo dave -u $USER` attempts cracking a password
+`sudo dave -s $USER` prints the hash data
+`sudo defaults read username.plist ShadowHashData|tr -dc 0-9a-f|xxd -p -r|plutil -convert xml1 - -o -` prints the hash data
+
+#keybindings for inserting control characters in iTerm 2
+control-2 inserts NUL
+control-3 inserts ^[
+control-4 inserts ^\
+control-5 inserts ^]
+control-6 inserts ^^
+control-7 inserts ^_
+control-8 inserts DEL
+for example control-3 can be used to insert ^[ (which is used as an escape character in telnet) on a keyboard layout that doesn't have a [ key
+the same keybindings are used by xterm
+
+#identifying the pages of Safari Web Content processes in 10.9
+the tooltips for the processes in Activity Monitor display the domain part of the URL (but not the full URL)
+you can see the PIDs of tabs in Safari by selecting Debug > Miscellaneous > Show Web Process IDs in Page Titles
+the debug menu can be enabled with `defaults write com.apple.Safari IncludeInternalDebugMenu -bool true`
+
+#less-known applications
+Consultant's Canary prints a list of components like login items and kernel extensions that did not come with OS X
+FastScripts can be used to assign shortcuts to scripts
+Find Any File is faster than find and includes files that are not indexed by Spotlight
+fseventer displays file system changes graphically
+JDownloader downloads files from DDL sites
+MasterKey is an advanced type training application
+Sequential is a native image viewer
+Snes9x is a native SNES emulator
+
+#changing the language of a single application
+`defaults write com.apple.TextEdit AppleLanguages -array ru` changes the default language permanently
+`/Applications/TextEdit.app/Contents/MacOS/TextEdit -AppleLanguages '(ru)'` changes the default language temporarily
+Language Switcher is a GUI for modifying the AppleLanguages arrays in the property lists of applications
+you can see a list of the identifiers for languages with `defaults read -g AppleLanguages`
+
+#showing the EFI and Recovery HD partitions in Disk Utility
+run `defaults write com.apple.DiskUtility DUDebugMenuEnabled -bool true` and select Debug > Show all partitions
+
+#EFI partition
+the EFI partition is formatted as FAT and its size is about 200 MB
+the EFI partition is initially blank and not used for booting but it is used as a staging area for firmware updates
+if the EFI partition is deleted, the Mac will start up normally and Startup Manager will still work, but firmware updates will fail
+`mkdir /tmp/efi;sudo mount -t msdos /dev/disk0s1 /tmp/efi` mounts the EFI partition
+/tmp/efi/BOOTLOG contains a timestamp for each time the system was started up from the recovery partition
+
+#.CFUserTextEncoding
+if ~/.CFUserTextEncoding is 0:0, the default encoding is MacRoman (see CFString Reference) and the default language is U.S. English
+the second number changes when you change the language from the Language & Region preference pane
+`echo 0x08000100:0>~/.CFUserTextEncoding` would change the default encoding to UTF-8, but it can cause problems with Adobe CS applications
+
+#changes in 10.9
+/usr/bin/gnutar was removed
+purge requires superuser priviliges
+Network Utility.app was moved from /Applications/Utilities/ to /System/Library/CoreServices/
+a password dialog is shown when using gdb
+the wallpapers previously inside ScreenSaver.framework were moved to /Library/Screen Savers/Default Collections/
+a short press of a power button or key puts a Mac to sleep instead of displaying the dialog shown when pressing control-eject
+the view options panel for the home folder has a Show Library Folder checkbox in Finder
+Dashboard can be moved between other spaces in Mission Control
+the Updates Ready to Install dialog has a button for choosing when to remind about the update
+Safari supports opening PSD files
+the Security preference pane has a list of applications that were blocked because they were from an unidentified developer
+there is no longer a delay before parts of pages are drawn in Safari if NSScrollAnimationEnabled is disabled
+the option to disable font smoothing for small text sizes was removed from the General preference pane
+Language & Text was renamed to Language & Region
+Mail, Contacts & Calendars was renamed to Internet Accounts
+the word break settings were removed from System Preferences
+having an open file handle on an SMB-mounted volume doesn't prevent sleep
+the Parental Controls preference pane has an option to disable built-in cameras
+the Accessibility preference pane has Captions and Switch Control sections
+VRAM for integrated GPUs is allocated dynamically
+AppleScript and Automator support displaying notifications
+Automator workflows can be saved as speakable items
+double-clicking a word in a text field in a web view includes a space after the word
+~/.ssh/authorized_keys2 stopped working and you have to use ~/.ssh/authorized_keys
+AppleScript Editor has an incremental search banner instead of a find dialog
+Safari preloads the top hit on the location bar
+the option for changing the encoding was removed from Mail
+settings for desktop pictures are stored in `~/Library/Application Support/Dock/desktoppicture.db` instead of ~/Library/Preferences/com.apple.desktop.plist
+there is a new Show Map service
+the Apple menu has a Location menu
+the romaji keyboard layout preference was removed and Kotoeri input methods use a keyboard layout corresponding to the previous input source
+Safari no longer displays UTF-8-encoded text files opened from file URLs using the default encoding (or Latin 1)
+the menu item for showing a plain text or rich text version of a message (option-command-P) was removed from Mail
+command-tab focuses windows from the current display before windows from other displays
+the QuickTime, QTKit, and Instant Message frameworks were deprecated
+the Message and ServerNotification frameworks were removed
+pressing escape no longer removes selections in Finder
+/usr/bin/ruby is ruby 2.0 instead of 1.8.7
+sound output is muted when starting dictation
+the list of text replacements is empty by default and text replacements are stored in NSUserDictionaryReplacementItems instead of NSUserReplacementItems
+
+#cached preferences
+if you edit a plist directly or replace the plist file, quitting and reopening the application no longer applies the changes since 10.9
+if you use defaults to edit a plist, the changes are still applied when you quit and reopen an application
+if you edit a plist directly, you can apply the changes by using defaults to read the plist or by terminating cfprefsd
+for example `cp /tmp/com.apple.Finder.plist ~/Library/Preferences;defaults read com.apple.Finder;open -a Finder` makes Finder use the new settings
+`defaults read com.apple.Finder` could also be replaced with `killall cfprefsd` in the command above
+`rm ~/Library/Preferences/com.apple.Finder.plist;killall Finder` does not reset Finder's preferences but `defaults delete com.apple.Finder;killall Finder` does
+
+#recording the average CPU use of processes
+add `* * * * * ps -eco '\%cpu= comm='|sed $'s/^ *//;s/ /\t/'>>~/Documents/cpu` to crontab
+then run `awk -F$'\t' '{a[$2]+=$1}END{for(i in a)print a[i],i}' ~/Documents/cpu|sort -rn` later
+
+#spelling dictionary files
+~/Library/Spelling/LocalDictionary applies to all languages and ~/Library/Spelling/en applies to only U.S. English
+when you press the learn button, the word is added to LocalDictionary if the language is set to automatic or to en if the language is set to U.S. English
+if you edit the files in ~/Library/Spelling/ directly, you can apply the changes by terminating the AppleSpell process
+
+#making sudo not require a password
+run `sudo visudo` and change `%admin ALL=(ALL) ALL` to `%admin ALL=(ALL) NOPASSWD: ALL`
+
+#unsorted
+10.8 came with zsh 4.3.11, which was released in 2010, and 10.9 came with zsh 5.0.2, which was released in 2012
+Fink is modeled after Debian's dpkg and apt-get
+QuickTime is not split into core and application frameworks
+umount can also be used to unmount osxfuse volumes and there is no separate fusermount command
+you can keep an installer application like Install OS X Mavericks.app by copying it before running the installer
+opensource.apple.com lists 69 GPL or LGPL licensed packages for 10.6, 54 for 10.7, and 43 for 10.8
+if opening new shells takes multiple seconds, try deleting files in /var/log/asl or make new shells open with `$SHELL -l`
+Apple recommends discharging and charging the battery of a laptop at least about once per month
+Apple recommends storing the battery at about 50% charge when a laptop is not used for several months
+OS X's EULA has allowed running OS X VMs on Macs (but not on non-Mac computers) since 10.7
+kerning and ligatures are disabled by default in most web views
+subpixel rendering is not used in the web views in iTunes or App Store
+subpixel rendering is not used for elements with a transparent background, like the names of icons on the desktop
+the Verify Disk button in Disk Utility performs different operations depending on whether a whole-disk or a volume is selected
+the Security Options button in Disk Utility has been disabled for SSDs since 10.7
+you can change the default application for text files without an extension by adding an entry for public.plain-text to com.apple.LaunchServices.plist
+loginwindow sends processes that support sudden termination a KILL signal during logout
+applications like TextEdit and Xcode show a file as locked unless you also have write permission to the directory the file is in
+the icon for a folder with a flashing question mark can be shown after a hard drive fails
+the default shell was tcsh until 10.2
+the fallback store is a local Core Data database that applications can use when the iCloud Core Data database is unavailable
+SK is Sprite Kit and SCN is Scene Kit
+partitions encrypted with FileVault 2 cannot be resized with Disk Utility or diskutil
+the Local Items keychain is replaced with an iCloud keychain when iCloud Keychain is enabled
+iStumbler can be used to analyze wireless pollution
+MediaAccessibility.framework provides support for global preferences for controlling subtitles and captions
+iTunesLibrary.framework provides support for accessing media in the iTunes library from sandboxed applications
+the Archive and Install option was removed in 10.7
+you can run a script every time a backup is saved by watching for changes to /Library/Preferences/com.apple.TimeMachine.plist
+upgrading OS X replaces /etc/sshd_config and /etc/apache2/httpd.conf
+`diskutil info` doesn't show UUIDs for NTFS or FAT volumes
+IceFloor is a GUI for pf
+`xcode-select --install` opens `/System/Library/CoreServices/Install Command Line Developer Tools.app`
+if an mdworker process always uses 100% CPU, try to delete .mdimporter bundles shown by `sudo lsof|grep mdworker`
+/cores/ is used to store core dumps
+Caching Server keeps copies of software updates, applications, and iBooks and iTunes U content downloaded by Macs and iOS devices
+wdhelper is an XPC helper tool for performing privileged operations for WirelessDiagnosticsSupport.framework
+Shellfish is a Safari and Chrome extension that removes sharing buttons and other social elements
+the Archive and Install option was removed in 10.6
+Apple Color Emoji is a color bitmap font
+CoreText replaced ATSUI in 10.5
+KeePassX and KyPass Companion are alternatives to KeePass
+special files can have HFS flags and a creation time but not xattrs or ACLs
+you can reset SMC on a new laptop by shutting it down, connecting it to a power adapter, and holding control, option, shift, and the power button
+if you install JRE7, the java binary is installed in `/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java`

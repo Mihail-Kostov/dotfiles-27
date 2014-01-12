@@ -1,0 +1,26 @@
+[color]
+	ui = true
+[user]
+	email = 4apaev@gmail.com
+	name = michael
+[alias]
+	l=log --pretty=oneline -n 20 --graph --abbrev-commit
+	st=status
+	ci=commit
+	cm=commit -m
+	co=checkout
+	br=branch
+	a=!git add . && git status
+[push]
+	default=current
+[merge]
+	conflictstyle=diff3
+[core]
+	excludesfile = /Users/michael/.gitignore_global
+	editor = subl -n -w
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path = 
+[mergetool "sourcetree"]
+	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true

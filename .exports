@@ -1,0 +1,29 @@
+#!/bin/bash
+
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.7.0_40.jdk/Contents/Home
+export PATH=$HOME/.rvm/bin:$JAVA_HOME:/usr/local/bin:$PATH
+
+export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=256m"
+export EDITOR='subl -w'
+export LESSEDIT='subl %f'
+export VISUAL="$EDITOR"
+
+# Larger bash history (allow 32³ entries; default is 500)
+export HISTSIZE=32768
+export HISTFILESIZE=$HISTSIZE
+export HISTCONTROL=ignoredups
+# Make some commands not show up in history
+export HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help"
+
+# Prefer US English and use UTF-8
+export LANG="en_US"
+export LC_ALL="en_US.UTF-8"
+
+# Don’t clear the screen after quitting a manual page
+export MANPAGER="less -X"
+
+# Always enable colored `grep` output
+export GREP_OPTIONS="--color=auto"
+
+bower completion >> ~/.bash_profile
+#set completion-ignore-case on

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+alias mint='mvn clean install -Dmaven.test.skip=true'
+alias ls='command ls -G';
+
+alias la='ls -la'
+alias lt='tre'
+alias lsd="ls -R | grep \":$\" | sed -e 's/:$//' -e 's/[^-][^\/]*\//--/g' -e 's/^/   /' -e 's/-/|/'"
+alias ..='cd .. && la'
+
+alias cp='cp -i';
+alias mv='mv -i';
+alias rm='rm -i';
+alias reload="exec $SHELL -l"
+
+alias stfu="osascript -e 'set volume output muted true'"
+alias pumpitup="osascript -e 'set volume 7'"
+
+alias enigma='node $DFL/node/enigma'
+
+alias q='subl'
+alias oa='subl ~/dotfiles'
+alias tochrome='cd ~/Library/Application\ Support/Google/Chrome/Default'
