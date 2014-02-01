@@ -20,4 +20,7 @@ alias enigma='node $DFL/node/enigma'
 
 alias q='subl'
 alias oa='subl ~/dotfiles'
+alias ofontelo='open ~/projects/tools/fontello/fontello-2/demo.html'
+alias totools='cd ~/projects/tools'
 alias tochrome='cd ~/Library/Application\ Support/Google/Chrome/Default'
+
