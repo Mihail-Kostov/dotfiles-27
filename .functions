@@ -1,22 +1,19 @@
 #!/bin/bash
+toblaze () {
+  cd $BLAZE/$@    ;
+}
+compctl -/ -W $BLAZE/$@ toblaze
 
 lab () {
-  cd $LAB/$1;
+  cd $LAB/$@    ;
 }
-
-# md() {
-#   mkdir -p "$@" && cd "$@"
-# }
+compctl -/ -W $LAB/$@ lab
 
 
-
-o() {
-  if [ $# -eq 0 ]; then
-    open .
-  else
-    open "$@"
-  fi
+toSubl() {
+  cd $SUBTT/$@
 }
+compctl -/ -W $SUBTT/$@ toSubl
 
 del () {
   mv -iv $@ ~/.Trash
@@ -43,6 +40,68 @@ extract () {
   else
     echo "'$1' is not a valid file"
   fi
+}
+
+
+function jamp() {
+  emulate -L zsh
+  autoload -U colors
+  local color=$fg_bold[blue]
+  integer i=0
+  dirs -p | while read dir
+  do
+      local num="${$(printf "%-4d " $i)/ /.}"
+      printf " %s  $color%s$reset_color\n" $num $dir
+      (( i++ ))
+  done
+  integer dir=-1
+  read -r 'dir?Jump to directory: ' || return
+  (( dir == -1 )) && return
+  if (( dir < 0 || dir >= i ))
+  then
+      echo d: no such directory stack entry: $dir
+      return 1
+  fi
+  cd ~$dir
+}
+
+
+function mdate()
+{
+    mkdir `date +%F`
+    cd `date +%F`
+}
+
+# SEARCH: Show the path from a symlink to its ultimate source.
+function folsym() {
+if [[ -e $1 || -h $1 ]]; then
+    file=$1
+else
+    file=`which $1`
+fi
+if
+    if [[ -e $file || -L $file ]]; then
+        if [[ -L $file ]]; then
+            echo `ls -ld $file | perl -ane 'print $F[7]'` '->'
+            folsym `perl -le '$file = $ARGV[0];
+            $dest = readlink $file;
+            if ($dest !~ m{^/}) {
+                $file =~ s{(/?)[^/]*$}{$1$dest};
+            } else {
+            $file = $dest;
+        }
+        $file =~ s{/{2,}}{/}g;
+        while ($file =~ s{[^/]+/\.\./}{}) {
+            ;
+        }
+        $file =~ s{^(/\.\.)+}{};
+        print $file' $file`
+    else
+        ls -d $file
+    fi
+else
+    echo $file
+fi
 }
 
 ram() {
