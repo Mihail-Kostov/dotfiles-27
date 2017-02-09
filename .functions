@@ -1,23 +1,13 @@
 #!/bin/bash
-toblaze () {
-  cd $BLAZE/$@    ;
+tofly () {
+  cd $FLY/$@    ;
 }
-compctl -/ -W $BLAZE/$@ toblaze
+compctl -/ -W $FLY/$@ tofly
 
 lab () {
   cd $LAB/$@    ;
 }
 compctl -/ -W $LAB/$@ lab
-
-
-toSubl() {
-  cd $SUBTT/$@
-}
-compctl -/ -W $SUBTT/$@ toSubl
-
-del () {
-  mv -iv $@ ~/.Trash
-}
 
 extract () {
   if [ -f $1 ]; then
@@ -41,8 +31,6 @@ extract () {
     echo "'$1' is not a valid file"
   fi
 }
-
-
 function jamp() {
   emulate -L zsh
   autoload -U colors
@@ -64,153 +52,12 @@ function jamp() {
   fi
   cd ~$dir
 }
-
-
-function mdate()
-{
+function mdate() {
     mkdir `date +%F`
     cd `date +%F`
+    # -d  -f  -r  -t  -v
 }
 
-# SEARCH: Show the path from a symlink to its ultimate source.
-function folsym() {
-if [[ -e $1 || -h $1 ]]; then
-    file=$1
-else
-    file=`which $1`
-fi
-if
-    if [[ -e $file || -L $file ]]; then
-        if [[ -L $file ]]; then
-            echo `ls -ld $file | perl -ane 'print $F[7]'` '->'
-            folsym `perl -le '$file = $ARGV[0];
-            $dest = readlink $file;
-            if ($dest !~ m{^/}) {
-                $file =~ s{(/?)[^/]*$}{$1$dest};
-            } else {
-            $file = $dest;
-        }
-        $file =~ s{/{2,}}{/}g;
-        while ($file =~ s{[^/]+/\.\./}{}) {
-            ;
-        }
-        $file =~ s{^(/\.\.)+}{};
-        print $file' $file`
-    else
-        ls -d $file
-    fi
-else
-    echo $file
-fi
-}
-
-ram() {
-  local sum
-  local items
-  local app="$1"
-  if [ -z "$app" ]; then
-    echo "First argument - pattern to grep from processes"
-  else
-    sum=0
-    for i in `ps aux | grep -i "$app" | grep -v "grep" | awk '{print $6}'`; do
-      sum=$(($i + $sum))
-    done
-    sum=$(echo "scale=2; $sum / 1024.0" | bc)
-    if [[ $sum != "0" ]]; then
-      echo "${fg[blue]}${app}${reset_color} uses ${fg[green]}${sum}${reset_color} MBs of RAM."
-    else
-      echo "There are no processes with pattern '${fg[blue]}${app}${reset_color}' are running."
-    fi
-  fi
-}
-
-# Determine size of a file or total size of a directory
-fs() {
-  if du -b /dev/null > /dev/null 2>&1; then
-    local arg=-sbh
-  else
-    local arg=-sh
-  fi
-  if [[ -n "$@" ]]; then
-    du $arg -- "$@"
-  else
-    du $arg .[^.]* *
-  fi
-}
-
-# Add reminder to Reminders.app (OS X 10.8)
-# Usage: `remind 'foo'` or `echo 'foo' | remind`
-
-remind() {
-  local text
-  if [ -t 0 ]; then
-          text="$1" # argument
-  else
-          text=$(cat) # pipe
-  fi
-  osascript >/dev/null <<EOF
-tell application "Reminders"
-  tell the default list
-    make new reminder with properties {name:"$text"}
-  end tell
-end tell
-EOF
-}
-
-# Add note to Notes.app (OS X 10.8)
-# Usage: `note 'title' 'body'` or `echo 'body' | note`
-# Title is optional
-note() {
-  local title
-  local body
-  if [ -t 0 ]; then
-    title="$1"
-    body="$2"
-  else
-    title=$(cat)
-  fi
-  osascript >/dev/null <<EOF
-tell application "Notes"
-  tell account "iCloud"
-    tell folder "Notes"
-      make new note with properties {name:"$title", body:"$title" & "<br><br>" & "$body"}
-    end tell
-  end tell
-end tell
-EOF
-}
-
-# `tre` is a shorthand for `tree` with hidden files and color enabled, ignoring
-# the `.git` directory, listing directories first. The output gets piped into
-# `less` with options to preserve color and line numbers, unless the output is
-# small enough for one screen.
-tre() {
-  tree -aC -I '.git|node_modules|bower_components' --dirsfirst "$@" | less -FRNX
-}
-
-# Shortcut for searching commands history.
-hist() {
-  history 0 | grep $@
-}
-
-# Execute commands for each file in current directory.
-each() {
-  for dir in *; do
-    echo "${dir}:"
-    cd $dir
-    $@
-    cd ..
-  done
-}
-
-# Pack files with zip and password.
-zip-pass() {
-  zip -e $(basename $PWD).zip $@
-}
-
-cip() {
-  git commit -m $1 && cowsay smile && imagesnap -q
-}
 
 snap() {
   while :; do
@@ -218,11 +65,9 @@ snap() {
     sleep ${1-1}
   done
 }
-
-
-# fdupes() {
-#   find . -type f ! -empty -exec md5 -r {} +|awk '++a[$1]!=1'|cut -d' ' -f2-|tr '\n' '\0'|xargs -0 del
-# }
+fdupes() {
+  find . -type f ! -empty -exec md5 -r {} +|awk '++a[$1]!=1'|cut -d' ' -f2-|tr '\n' '\0'|xargs -0 del
+}
 
 # Find files and exec commands at them.
 # $ find-exec .coffee cat | wc -l

@@ -1,0 +1,32 @@
+{
+	"installed_packages":
+	[
+		"Alignment",
+		"Backbone.js",
+		"CSS Snippets",
+		"Dotfiles Syntax Highlighting",
+		"EditorConfig",
+		"FileModifyStatus",
+		"Git",
+		"GitGutter",
+		"Handlebars",
+		"Hayaku - tools for writing CSS faster",
+		"HTML Snippets",
+		"HTML-CSS-JS Prettify",
+		"Jade",
+		"Jade Snippets",
+		"JavaScript & NodeJS Snippets",
+		"JS Snippets",
+		"LESS",
+		"Levels",
+		"Package Control",
+		"SideBarEnhancements",
+		"Stylus",
+		"Stylus-Snippets",
+		"sublime-jslint",
+		"Theme - Soda",
+		"Tomorrow Color Schemes",
+		"Vanilla lodash Snippets",
+		"Web Inspector"
+	]
+}

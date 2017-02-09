@@ -1,24 +1,143 @@
 #!/bin/bash
 
-# alias ls='command ls -G';
-
-# alias la='ls -la'
-# alias lt='tre'
-# alias lsd="ls -R | grep \":$\" | sed -e 's/:$//' -e 's/[^-][^\/]*\//--/g' -e 's/^/   /' -e 's/-/|/'"
-# alias ..='cd .. && la'
-
-alias cp='cp -i';
-#alias mv='mv -i';
-#alias rm='rm -i';
+alias l="ls -al"
 alias reload="exec $SHELL -l"
+alias oz='subl ~/.zshrc'
+alias oa='subl ~/Projects/dotfiles'
+alias oh='subl /etc/hosts'
+alias myip='ifconfig -a | grep inet'
+alias manp='man-preview'
+alias ubrew='brew update && brew upgrade && brew cleanup && brew prune && brew doctor'
+alias del='rmtrash'
+
+alias rsync_cp="rsync -avz --progress -h"
+alias rsync_mv="rsync -avz --progress -h --remove-source-files"
+alias rsync_up="rsync -avzu --progress -h"
+alias rsync_sy="rsync -avzu --delete --progress -h"
+
+alias A='git add -A'
+alias S='git status -s'
+alias L='git log --oneline --decorate --all --graph'
+alias D='git diff'
+alias DH='git diff HEAD'
+
+
+alias copy='pbcopy'
+alias chrome='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-extensions --disable-plugins'
 
 alias stfu="osascript -e 'set volume output muted true'"
+alias mute="stfu"
 alias pumpitup="osascript -e 'set volume 7'"
+alias npminstallglobal="npm i -g browserify typescript gulp express jade stylus babel-cli babel-preset-es2015 mocha jshint uglifyjs js-beautify"
 
-# alias enigma='node $DFL/node/enigma'
-alias q='subl'
-alias oa='subl  ~/Projects/dotfiles'
-alias totools='cd ~/Projects/tools'
-alias tochrome='cd ~/Library/Application\ Support/Google/Chrome/Default'
-#qwecxza
-alias blazeDev='ssh vitali@vitali.a.blazemeter.com -p 59345'
+# babel-cli babel-preset-es2015 mocha jshint uglifyjs js-beautify
+upnpm () {
+  for pac in $(npm -g outdated --parseable --depth=0 | cut -d: -f3)
+  do
+    npm -g install "$pac"
+  done
+}
+
+# Determine size of a file or total size of a directory
+fs() {
+  if du -b /dev/null > /dev/null 2>&1; then
+    local arg=-sbh
+  else
+    local arg=-sh
+  fi
+  if [[ -n "$@" ]]; then
+    du $arg -- "$@"
+  else
+    du $arg .[^.]* *
+  fi
+}
+
+# Execute commands for each file in current directory.
+each() {
+  for dir in *; do
+    echo "${dir}:"
+    cd $dir
+    $@
+    cd ..
+  done
+}
+
+renode() {
+  brew uninstall node
+  brew install node --without-npm
+  curl -L https://npmjs.com/install.sh | sh
+}
+
+unpm() {
+  for pkg in `ls ~/.npm-packages/lib/node_modules`
+  do
+    if [ $pkg != 'npm' ]
+    then
+      echo $pkg
+      npm update -g $pkg
+    fi
+  done
+}
+
+removeDocker() {
+  docker-machine rm -f $(docker-machine ls -q);
+  boot2docker stop
+  boot2docker delete
+  # Remove boot2docker & docker app:
+
+  sudo rm -rf /Applications/boot2docker
+  sudo rm -rf /Applications/Docker
+  # Remove all Docker and boot2docker command line tools:
+
+  sudo rm -f /usr/local/bin/docker
+  sudo rm -f /usr/local/bin/boot2docker
+  sudo rm -f /usr/local/bin/docker-machine
+  sudo rm -r /usr/local/bin/docker-machine-driver*
+  sudo rm -f /usr/local/bin/docker-compose
+  # Remove docker packages:
+
+
+  pkgutil --forget io.docker.pkg.docker
+  pkgutil --forget io.docker.pkg.dockercompose
+  pkgutil --forget io.docker.pkg.dockermachine
+  pkgutil --forget io.boot2dockeriso.pkg.boot2dockeriso
+  # Remove boot2docker VBox image:
+
+  sudo rm -rf /usr/local/share/boot2docker
+
+  rm -rf ~/.boot2docker
+  # Remove boot2docker ssh keys:
+
+  rm ~/.ssh/id_boot2docker*
+  # Remove additional boot2docker files in /private folder:
+
+  sudo rm -f /private/var/db/receipts/io.boot2docker.*
+  sudo rm -f /private/var/db/receipts/io.boot2dockeriso.*
+}
+
+# if [ -f /var/log/messages ]
+#   then
+#     echo "/var/log/messages exists."
+# fi
+
+# for n in 1 2 3 4 ; \
+# do \
+#   if [ -f /var/log/messages ]
+#   echo $n ; \
+# done
+
+# lab () {
+#   cd $LAB/$@    ;
+# }
+# compctl -/ -W $LAB/$@ lab
+
+
+# deploybadmin () {
+#   cd $FLY/do-provision/ansible
+#   ./deploy-nodeapp.sh --config configs/prod.conf --service-name badmin --archive $FLY/admin/badmin-$1.tar.gz --version $1
+# }
+
+# alias cp='cp -i';
+
+
+

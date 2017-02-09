@@ -1,0 +1,53 @@
+#!/bin/bash
+
+alias reload="exec $SHELL -l"
+alias bower='noglob bower'
+alias oz='vim ~/.zshrc'
+alias oa='subl ~/Projects/dotfiles'
+alias oh='subl /etc/hosts'
+alias myip='ifconfig -a | grep inet'
+alias manp='man-preview'
+alias ubrew='brew update && brew upgrade && brew cleanup && brew prune && brew doctor'
+alias del='rmtrash'
+alias copy='pbcopy'
+alias chrome='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-extensions --disable-plugins'
+# alias chromedev='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-extensions'
+# alias chromedev='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-plugins'
+
+# chrome() {
+#   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome $@
+#   # /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-extensions
+# }
+# compctl -/ -W $FLY/$@ tofly
+
+tofly () {
+  cd $FLY/$@    ;
+}
+compctl -/ -W $FLY/$@ tofly
+
+lab () {
+  cd $LAB/$@    ;
+}
+compctl -/ -W $LAB/$@ lab
+
+
+
+
+# deploybadmin () {
+#   cd $FLY/do-provision/ansible
+#   ./deploy-nodeapp.sh --config configs/prod.conf --service-name badmin --archive $FLY/admin/badmin-$1.tar.gz --version $1
+# }
+
+
+
+# alias cp='cp -i';
+# alias tonginx='cd /usr/local/etc/nginx'
+# alias jenkins='java -jar /usr/local/opt/jenkins/libexec/jenkins.war'
+# alias stfu="osascript -e 'set volume output muted true'"
+# alias pumpitup="osascript -e 'set volume 7'"
+#qwecxza
+# alias blzConnect='ssh vitali@vitali.a.blazemeter.com -p 59345'
+# alias blzpass='echo 2569'
+# alias bzsync='sh sync.sh'
+
+
